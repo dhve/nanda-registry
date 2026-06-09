@@ -3,8 +3,10 @@ import type { FastifyInstance } from 'fastify';
 import { buildServer } from '../../src/server.js';
 import { getSql } from '../../src/db.js';
 
-const ADMIN_TOKEN = process.env['REGISTRY_ADMIN_TOKEN'] ?? 'test-token';
-const AUTH = { Authorization: `Bearer ${ADMIN_TOKEN}` };
+const TEST_EMAIL = 'agents-test@test.local';
+const TEST_PASSWORD = 'test-password-secure123';
+
+let AUTH: { Authorization: string };
 
 describe('Agent CRUD routes', () => {
   let fastify: FastifyInstance;
@@ -13,9 +15,21 @@ describe('Agent CRUD routes', () => {
     const built = await buildServer({ logger: false });
     fastify = built.fastify;
     await fastify.ready();
+
+    await fastify.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: TEST_EMAIL, password: TEST_PASSWORD },
+    });
+    const login = await fastify.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: TEST_EMAIL, password: TEST_PASSWORD },
+    });
+    AUTH = { Authorization: `Bearer ${login.json().token}` };
   });
 
   afterAll(async () => {
+    const sql = getSql();
+    await sql`DELETE FROM users WHERE email = ${TEST_EMAIL}`;
     await fastify.close();
     const { closeSql } = await import('../../src/db.js');
     await closeSql();

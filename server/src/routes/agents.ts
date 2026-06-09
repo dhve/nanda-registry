@@ -1,7 +1,5 @@
-import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getSql } from '../db.js';
-import { getConfig } from '../config.js';
 import {
   toCatalogEntry,
   CATALOG_ENTRY_SCHEMA,
@@ -33,25 +31,8 @@ interface UpdateAgentBody {
   status?: 'active' | 'inactive';
 }
 
-/**
- * Accepts EITHER:
- *  - A valid JWT (issued by /auth/login) — for users logged in via the UI
- *  - The static REGISTRY_ADMIN_TOKEN — for CI/automation backward compat
- */
+/** Requires a valid JWT issued by POST /auth/login. */
 async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const auth = request.headers['authorization'];
-  const config = getConfig();
-
-  if (!auth) {
-    return reply.code(401).send({ error: 'UNAUTHORIZED', detail: 'authentication required' });
-  }
-
-  // Admin token fast-path (Bearer <static-token>) — timing-safe to prevent timing attacks
-  const expected = Buffer.from(`Bearer ${config.adminToken}`);
-  const actual   = Buffer.from(auth);
-  if (actual.length === expected.length && timingSafeEqual(actual, expected)) return;
-
-  // JWT path — verify and decode
   try {
     await request.jwtVerify();
   } catch {
@@ -74,7 +55,7 @@ function buildCatalogDocument(rows: AgentRow[]): CatalogDocument {
  *   GET /agents/:agent_id             — single CatalogEntry
  *   GET /.well-known/ai-catalog.json  — same as GET /agents (discovery)
  *
- * Protected (REGISTRY_ADMIN_TOKEN):
+ * Protected (JWT — POST /auth/login):
  *   POST   /agents            — create entry
  *   PUT    /agents/:agent_id  — update entry
  *   DELETE /agents/:agent_id  — delete entry

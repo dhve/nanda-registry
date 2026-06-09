@@ -29,7 +29,6 @@ export interface Config {
     readonly url: string;
     readonly maxConnections: number;
   };
-  readonly adminToken: string;
   readonly jwt: {
     readonly secret: string;
     readonly expiresIn: string;
@@ -67,7 +66,6 @@ export function getConfig(): Config {
       url:            requireEnv('DATABASE_URL'),
       maxConnections: parsePositiveInt('DB_MAX_CONNECTIONS', optionalEnv('DB_MAX_CONNECTIONS', '10')),
     },
-    adminToken: requireEnv('REGISTRY_ADMIN_TOKEN'),
     jwt: {
       secret:    jwtSecret,
       expiresIn: optionalEnv('JWT_EXPIRES_IN', '7d'),

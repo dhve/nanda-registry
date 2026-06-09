@@ -3,11 +3,11 @@
 # Spins up: Postgres DB, Registry Server (Fastify), Registry Web (Next.js)
 #
 # Quick start:
-#   cp .env.example .env        # set REGISTRY_ADMIN_TOKEN at minimum
+#   cp .env.example .env
 #   docker compose up --build
 #
 # Registry API:  http://localhost:3002
-# Registry Web:  http://localhost:3000
+# Registry Web:  http://localhost:3003
 
 services:
 
@@ -36,7 +36,6 @@ services:
       NODE_ENV: production
       PORT: 3002
       DATABASE_URL: postgresql://registry:${POSTGRES_PASSWORD:-registry-local}@db:5432/nanda_registry
-      REGISTRY_ADMIN_TOKEN: ${REGISTRY_ADMIN_TOKEN}
       JWT_SECRET: ${JWT_SECRET:-registry-dev-secret-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
@@ -54,7 +53,7 @@ services:
     environment:
       PORT: 3000
     ports:
-      - "3000:3000"
+      - "3003:3000"
     depends_on:
       - server
     restart: unless-stopped

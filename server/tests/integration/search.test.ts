@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildServer } from '../../src/server.js';
 import { getSql } from '../../src/db.js';
 
-const ADMIN_TOKEN = process.env['REGISTRY_ADMIN_TOKEN'] ?? 'test-token';
-const AUTH = { Authorization: `Bearer ${ADMIN_TOKEN}` };
+const TEST_EMAIL = 'search-test@test.local';
+const TEST_PASSWORD = 'test-password-secure123';
 
 describe('GET /agents/search', () => {
   let fastify: FastifyInstance;
@@ -14,7 +14,16 @@ describe('GET /agents/search', () => {
     fastify = built.fastify;
     await fastify.ready();
 
-    // Seed test agents
+    await fastify.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: TEST_EMAIL, password: TEST_PASSWORD },
+    });
+    const login = await fastify.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: TEST_EMAIL, password: TEST_PASSWORD },
+    });
+    const AUTH = { Authorization: `Bearer ${login.json().token}` };
+
     const sql = getSql();
     await sql`DELETE FROM agents WHERE agent_id LIKE 'srch-%'`;
     await fastify.inject({
@@ -30,13 +39,10 @@ describe('GET /agents/search', () => {
   afterAll(async () => {
     const sql = getSql();
     await sql`DELETE FROM agents WHERE agent_id LIKE 'srch-%'`;
+    await sql`DELETE FROM users WHERE email = ${TEST_EMAIL}`;
     await fastify.close();
     const { closeSql } = await import('../../src/db.js');
     await closeSql();
-  });
-
-  beforeEach(async () => {
-    // no per-test cleanup needed — seed is stable
   });
 
   it('keyword search returns matching agents', async () => {
