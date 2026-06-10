@@ -1,0 +1,14 @@
+{
+	auto_https off
+	admin off
+}
+
+# NANDA Registry Web — http://<DROPLET_IP>:8080
+:8080 {
+	reverse_proxy web:3000
+}
+
+# NANDA Registry API — http://<DROPLET_IP>:3002
+:3002 {
+	reverse_proxy server:3002
+}
