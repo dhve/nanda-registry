@@ -3,8 +3,8 @@
 	admin off
 }
 
-# NANDA Registry Web — http://<DROPLET_IP>:8080
-:8080 {
+# NANDA Registry Web — http://<DROPLET_IP>
+:80 {
 	reverse_proxy web:3000
 }
 

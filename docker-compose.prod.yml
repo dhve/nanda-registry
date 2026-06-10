@@ -56,7 +56,7 @@ services:
   caddy:
     image: caddy:2-alpine
     ports:
-      - "8080:8080"
+      - "80:80"
       - "3002:3002"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
