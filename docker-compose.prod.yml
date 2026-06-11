@@ -5,8 +5,8 @@
 #   2. docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
 #
 # Caddy exposes (open these ports in your Droplet firewall):
-#   :8080 → Registry Web  (Next.js)
-#   :3002 → Registry API  (Fastify)
+#   :80  → HTTP (redirects to HTTPS automatically)
+#   :443 → registry.nasiko.com (web) + api.registry.nasiko.com (API)
 #
 # Postgres is internal only — not reachable from outside.
 
@@ -57,7 +57,7 @@ services:
     image: caddy:2-alpine
     ports:
       - "80:80"
-      - "3002:3002"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

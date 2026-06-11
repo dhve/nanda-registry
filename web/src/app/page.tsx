@@ -22,9 +22,12 @@ import {
   getRegistryMe,
 } from "@/lib/registry-api";
 
+const REGISTRY_API_URL =
+  process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "https://api.registry.nasiko.com";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type AuthMode = "login" | "register" | "token";
+type AuthMode = "login" | "register";
 type ConnectState = "idle" | "connecting" | "connected";
 type PanelMode = "view" | "create" | "edit";
 
@@ -163,44 +166,30 @@ function ConnectScreen({
   onConnected: (session: Session) => void;
   connectState: ConnectState;
 }) {
-  const [registryUrl, setRegistryUrl] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [adminToken, setAdminToken]   = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function connect() {
-    if (!registryUrl) return;
     setLoading(true);
     setError(null);
     try {
-      let token = "";
-      let user: RegistryUser | null = null;
-
-      if (authMode === "token") {
-        token = adminToken;
-        // Verify by listing agents
-        await fetchRegistryAgents(registryUrl, token);
-      } else {
-        token = authMode === "register"
-          ? await registerOnRegistry(registryUrl, email, password, displayName || undefined)
-          : await loginToRegistry(registryUrl, email, password);
-        user = await getRegistryMe(registryUrl, token);
-      }
-
-      onConnected({ registryUrl, token, user });
+      const token = authMode === "register"
+        ? await registerOnRegistry(REGISTRY_API_URL, email, password, displayName || undefined)
+        : await loginToRegistry(REGISTRY_API_URL, email, password);
+      const user = await getRegistryMe(REGISTRY_API_URL, token);
+      onConnected({ registryUrl: REGISTRY_API_URL, token, user });
     } catch (err) {
-      setError(err instanceof RegistryApiError ? err.message : "Could not connect — check URL and credentials.");
+      setError(err instanceof RegistryApiError ? err.message : "Could not sign in — check your credentials.");
     } finally {
       setLoading(false);
     }
   }
 
-  const isReady = registryUrl.trim() &&
-    (authMode === "token" ? adminToken.trim() : email.trim() && password.trim());
+  const isReady = email.trim() && password.trim();
 
   return (
     <div className="mx-auto max-w-lg space-y-5">
@@ -208,23 +197,14 @@ function ConnectScreen({
         <div>
           <h2 className="font-serif text-xl italic text-slate-950">Registry Manager</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Sign in to your Registry Server to manage agents.
+            Sign in to manage your agents on the NANDA Registry.
           </p>
         </div>
-
-        {/* Registry URL */}
-        <Field
-          label="Registry Server URL"
-          value={registryUrl}
-          onChange={setRegistryUrl}
-          placeholder="http://localhost:3002"
-          hint="The base URL of your running Registry Server."
-        />
 
         {/* Auth mode tabs */}
         <div>
           <div className="mb-4 flex rounded-xl border border-black/10 p-1 text-sm">
-            {([["login", "Sign in"], ["register", "Create account"], ["token", "Admin token"]] as [AuthMode, string][]).map(([key, label]) => (
+            {([["login", "Sign in"], ["register", "Create account"]] as [AuthMode, string][]).map(([key, label]) => (
               <button
                 key={key} type="button"
                 onClick={() => { setAuthMode(key); setError(null); }}
@@ -236,25 +216,14 @@ function ConnectScreen({
             ))}
           </div>
 
-          {authMode === "token" ? (
-            <Field
-              label="Admin Token"
-              value={adminToken}
-              onChange={setAdminToken}
-              placeholder="dev-admin-token"
-              type="password"
-              hint="REGISTRY_ADMIN_TOKEN from the server environment. For CI / automation."
-            />
-          ) : (
-            <div className="space-y-3">
-              {authMode === "register" && (
-                <Field label="Display name (optional)" value={displayName} onChange={setDisplayName} placeholder="Your name" />
-              )}
-              <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
-              <Field label="Password" value={password} onChange={setPassword} placeholder="••••••••" type="password"
-                hint={authMode === "register" ? "At least 8 characters." : undefined} />
-            </div>
-          )}
+          <div className="space-y-3">
+            {authMode === "register" && (
+              <Field label="Display name (optional)" value={displayName} onChange={setDisplayName} placeholder="Your name" />
+            )}
+            <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
+            <Field label="Password" value={password} onChange={setPassword} placeholder="••••••••" type="password"
+              hint={authMode === "register" ? "At least 8 characters." : undefined} />
+          </div>
         </div>
 
         {error && (
@@ -266,19 +235,8 @@ function ConnectScreen({
           disabled={loading || !isReady || connectState === "connecting"}
           className="w-full rounded-2xl bg-slate-950 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Connecting…" : authMode === "register" ? "Create account & connect" : authMode === "token" ? "Connect" : "Sign in & connect"}
+          {loading ? "Connecting…" : authMode === "register" ? "Create account & connect" : "Sign in & connect"}
         </button>
-      </div>
-
-      <div className="rounded-2xl border border-black/5 bg-slate-50 px-5 py-4 text-xs text-slate-500">
-        <p className="font-semibold text-slate-700">Don&apos;t have a Registry Server yet?</p>
-        <p className="mt-1">
-          Run <span className="font-mono">docker compose up</span> in this repo and set{" "}
-          <span className="font-mono">REGISTRY_ADMIN_TOKEN</span> in your <span className="font-mono">.env</span>. Then register
-          your org in the{" "}
-          <a href="https://nandaindex.org/dashboard/orgs/new" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">NANDA Index</a>{" "}
-          pointing to your registry URL.
-        </p>
       </div>
     </div>
   );
