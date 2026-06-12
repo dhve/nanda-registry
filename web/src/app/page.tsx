@@ -22,8 +22,7 @@ import {
   getRegistryMe,
 } from "@/lib/registry-api";
 
-const REGISTRY_API_URL =
-  process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "https://nasikoai.net/api";
+const REGISTRY_API_URL = process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
