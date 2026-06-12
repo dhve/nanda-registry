@@ -57,6 +57,8 @@ services:
 
   caddy:
     image: caddy:2-alpine
+    environment:
+      HOST: ${HOST}
     ports:
       - "80:80"
       - "443:443"
