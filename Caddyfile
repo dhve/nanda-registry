@@ -1,4 +1,4 @@
-{env.HOST} {
+{$HOST} {
 	handle /api/* {
 		uri strip_prefix /api
 		reverse_proxy server:3002
