@@ -1,0 +1,12 @@
+{
+  "name": "Document Summarizer",
+  "description": "Summarizes long documents, PDFs, and articles into concise structured outputs. Supports bullet points, executive summaries, and key-takeaway formats.",
+  "url": "https://agents.nasikoai.net/document-summarizer",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text", "file"],
+    "outputModes": ["text"],
+    "skills": ["extractive-summary", "abstractive-summary", "key-point-extraction"]
+  }
+}

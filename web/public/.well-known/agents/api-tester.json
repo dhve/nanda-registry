@@ -1,0 +1,12 @@
+{
+  "name": "API Tester",
+  "description": "Generates and runs test cases for REST APIs from an OpenAPI spec or curl examples. Reports failures, edge cases, and latency issues.",
+  "url": "https://agents.nasikoai.net/api-tester",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "inputModes": ["text", "file"],
+    "outputModes": ["text", "data"],
+    "skills": ["test-generation", "contract-testing", "edge-case-detection", "latency-profiling"]
+  }
+}

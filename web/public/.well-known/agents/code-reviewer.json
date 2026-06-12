@@ -1,0 +1,12 @@
+{
+  "name": "Code Reviewer",
+  "description": "Reviews code diffs and pull requests for bugs, security vulnerabilities, and style issues. Returns structured findings with severity levels.",
+  "url": "https://agents.nasikoai.net/code-reviewer",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text"],
+    "outputModes": ["text"],
+    "skills": ["bug-detection", "security-review", "style-enforcement", "refactor-suggestions"]
+  }
+}

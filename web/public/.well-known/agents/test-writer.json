@@ -1,0 +1,12 @@
+{
+  "name": "Test Writer",
+  "description": "Generates unit, integration, and end-to-end tests from source code or function signatures. Supports Jest, Vitest, Pytest, and Go testing.",
+  "url": "https://agents.nasikoai.net/test-writer",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text"],
+    "outputModes": ["text"],
+    "skills": ["unit-test-generation", "integration-test-generation", "mock-generation", "coverage-analysis"]
+  }
+}

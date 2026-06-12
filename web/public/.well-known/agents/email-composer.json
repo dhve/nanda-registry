@@ -1,0 +1,12 @@
+{
+  "name": "Email Composer",
+  "description": "Drafts professional emails from bullet points or intent descriptions. Adjusts tone (formal, friendly, assertive) and supports follow-up threading.",
+  "url": "https://agents.nasikoai.net/email-composer",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text"],
+    "outputModes": ["text"],
+    "skills": ["email-drafting", "tone-adjustment", "follow-up-generation", "subject-line-optimization"]
+  }
+}

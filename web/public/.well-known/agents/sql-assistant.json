@@ -1,0 +1,12 @@
+{
+  "name": "SQL Assistant",
+  "description": "Writes, explains, and optimizes SQL queries. Supports PostgreSQL, MySQL, and SQLite. Can generate migrations and schema from natural language descriptions.",
+  "url": "https://agents.nasikoai.net/sql-assistant",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text"],
+    "outputModes": ["text"],
+    "skills": ["query-generation", "query-optimization", "schema-design", "migration-generation"]
+  }
+}

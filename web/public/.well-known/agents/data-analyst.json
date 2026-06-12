@@ -1,0 +1,12 @@
+{
+  "name": "Data Analyst",
+  "description": "Analyzes structured datasets, generates summaries, identifies trends, and produces charts. Accepts CSV, JSON, and SQL query results.",
+  "url": "https://agents.nasikoai.net/data-analyst",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "inputModes": ["text", "file"],
+    "outputModes": ["text", "data"],
+    "skills": ["trend-analysis", "statistical-summary", "anomaly-detection", "chart-generation"]
+  }
+}

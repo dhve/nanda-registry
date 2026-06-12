@@ -1,0 +1,12 @@
+{
+  "name": "Log Debugger",
+  "description": "Analyzes application logs to identify errors, anomalies, and root causes. Supports structured JSON logs, plaintext logs, and stack traces.",
+  "url": "https://agents.nasikoai.net/log-debugger",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text", "file"],
+    "outputModes": ["text"],
+    "skills": ["log-parsing", "error-classification", "root-cause-analysis"]
+  }
+}

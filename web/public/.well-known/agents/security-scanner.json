@@ -1,0 +1,12 @@
+{
+  "name": "Security Scanner",
+  "description": "Scans codebases and API endpoints for OWASP Top 10 vulnerabilities, secrets leaks, and misconfigured dependencies. Returns findings with CVSS scores.",
+  "url": "https://agents.nasikoai.net/security-scanner",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "inputModes": ["text", "file"],
+    "outputModes": ["text", "data"],
+    "skills": ["owasp-scanning", "secret-detection", "dependency-audit", "cvss-scoring"]
+  }
+}

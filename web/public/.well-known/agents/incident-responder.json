@@ -1,0 +1,12 @@
+{
+  "name": "Incident Responder",
+  "description": "Triages production incidents by correlating alerts, logs, and metrics. Suggests immediate remediation steps and drafts post-mortems.",
+  "url": "https://agents.nasikoai.net/incident-responder",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "inputModes": ["text", "file"],
+    "outputModes": ["text"],
+    "skills": ["alert-correlation", "root-cause-analysis", "remediation-planning", "postmortem-generation"]
+  }
+}
