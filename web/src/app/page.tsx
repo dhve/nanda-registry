@@ -23,7 +23,7 @@ import {
 } from "@/lib/registry-api";
 
 const REGISTRY_API_URL =
-  process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "https://api.registry.nasiko.com";
+  process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "https://nasikoai.net/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,22 +47,22 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  agent_id:     "",
+  agent_id: "",
   display_name: "",
-  description:  "",
-  url:          "",
-  tags:         [],
-  ttl_seconds:  "3600",
+  description: "",
+  url: "",
+  tags: [],
+  ttl_seconds: "3600",
 };
 
 function agentToForm(agent: RegistryAgentRecord): FormState {
   return {
-    agent_id:     agent.identifier,
+    agent_id: agent.identifier,
     display_name: agent.displayName,
-    description:  agent.description ?? "",
-    url:          agent.url,
-    tags:         agent.tags ?? [],
-    ttl_seconds:  String(agent.metadata?.ttl_seconds ?? 3600),
+    description: agent.description ?? "",
+    url: agent.url,
+    tags: agent.tags ?? [],
+    ttl_seconds: String(agent.metadata?.ttl_seconds ?? 3600),
   };
 }
 
@@ -88,7 +88,7 @@ function Field({
         )}
       />
       {error ? <p className="mt-1 text-[11px] text-rose-500">{error}</p>
-             : hint ? <p className="mt-1 text-[11px] text-slate-400">{hint}</p> : null}
+        : hint ? <p className="mt-1 text-[11px] text-slate-400">{hint}</p> : null}
     </label>
   );
 }
@@ -167,7 +167,7 @@ function ConnectScreen({
   connectState: ConnectState;
 }) {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [email, setEmail]       = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -288,16 +288,16 @@ function AgentForm({ mode, form, patchForm, onSave, onCancel, saving, saveError 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function RegistryManagerPage() {
-  const [session, setSession]         = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [connectState, setConnectState] = useState<ConnectState>("idle");
 
-  const [agents, setAgents]   = useState<RegistryAgentRecord[]>([]);
+  const [agents, setAgents] = useState<RegistryAgentRecord[]>([]);
   const [selected, setSelected] = useState<RegistryAgentRecord | null>(null);
   const [panelMode, setPanelMode] = useState<PanelMode>("view");
-  const [form, setForm]           = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving]       = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [deleting, setDeleting]   = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<RegistryAgentRecord[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -354,26 +354,26 @@ export default function RegistryManagerPage() {
   function clearSearch() { setSearchQuery(""); setSearchResults(null); }
 
   function startCreate() { setForm(EMPTY_FORM); setSelected(null); setSaveError(null); setPanelMode("create"); }
-  function startEdit()   { if (!selected) return; setForm(agentToForm(selected)); setSaveError(null); setPanelMode("edit"); }
+  function startEdit() { if (!selected) return; setForm(agentToForm(selected)); setSaveError(null); setPanelMode("edit"); }
 
   function formToCreatePayload(): RegistryAgentCreatePayload {
     return {
-      agent_id:     form.agent_id,
+      agent_id: form.agent_id,
       display_name: form.display_name,
-      description:  form.description || undefined,
-      url:          form.url,
-      tags:         form.tags,
-      ttl_seconds:  parseInt(form.ttl_seconds, 10) || 3600,
+      description: form.description || undefined,
+      url: form.url,
+      tags: form.tags,
+      ttl_seconds: parseInt(form.ttl_seconds, 10) || 3600,
     };
   }
 
   function formToUpdatePayload(): RegistryAgentUpdatePayload {
     return {
       display_name: form.display_name,
-      description:  form.description || undefined,
-      url:          form.url,
-      tags:         form.tags,
-      ttl_seconds:  parseInt(form.ttl_seconds, 10) || 3600,
+      description: form.description || undefined,
+      url: form.url,
+      tags: form.tags,
+      ttl_seconds: parseInt(form.ttl_seconds, 10) || 3600,
     };
   }
 

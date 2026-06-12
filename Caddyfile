@@ -1,7 +1,19 @@
-registry.nasiko.com {
-	reverse_proxy web:3000
+nasikoai.net {
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy server:3002
+	}
+	handle {
+		reverse_proxy web:3000
+	}
 }
 
-api.registry.nasiko.com {
-	reverse_proxy server:3002
+http://134.209.56.131 {
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy server:3002
+	}
+	handle {
+		reverse_proxy web:3000
+	}
 }
