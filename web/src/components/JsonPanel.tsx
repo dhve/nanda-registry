@@ -14,14 +14,14 @@ export function JsonPanel({ data }: { data: unknown }) {
   }
 
   return (
-    <div className="min-w-0 rounded-[var(--radius-card)] bg-[color:var(--color-code-bg)] text-[color:var(--color-code-fg)] shadow-[var(--shadow-card)]">
+    <div className="min-w-0 rounded-card bg-brand-800 text-surface-light shadow-card">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
+        <span className="text-xs font-bold uppercase tracking-wide text-white/60">
           Raw JSON
         </span>
         <button
           onClick={copy}
-          className="rounded-[var(--radius-control)] border border-white/15 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20 transition"
+          className="rounded-control border border-white/15 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20 transition"
         >
           {copied ? "Copied" : "Copy JSON"}
         </button>

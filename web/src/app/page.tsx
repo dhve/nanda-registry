@@ -24,36 +24,42 @@ import {
 
 const REGISTRY_API_URL = process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "";
 
-// ── Shared primitives (Outshift token-bound) ──────────────────────────────────
+// ── Shared primitives (Outshift exact utility-class strings) ─────────────────
 
+// Card grid item (interactive selectable card) — see CANONICAL.md article pattern
 const cardClass =
-  "rounded-[var(--radius-card)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-card)]";
-const cardHoverClass =
-  "hover:border-[color:var(--color-border-strong)] hover:shadow-[var(--shadow-card-hover)] transition";
+  "bg-surface-light rounded-card border border-line/70 shadow-card p-4 hover:shadow-card-hover hover:border-line-strong transition flex flex-col h-full gap-3";
+// Static info/settings/form card — more padding, no hover
+const infoCardClass =
+  "bg-surface-light rounded-card border border-line p-6 shadow-card";
+
 const primaryBtnClass =
-  "inline-flex items-center justify-center rounded-[var(--radius-control)] bg-[color:var(--color-primary)] px-4 h-10 text-sm font-medium text-white hover:bg-[color:var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 transition";
+  "inline-flex items-center justify-center h-9 rounded-control bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 transition";
 const secondaryBtnClass =
-  "inline-flex items-center justify-center rounded-[var(--radius-control)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 h-10 text-sm font-medium text-[color:var(--color-fg-default)] hover:bg-[color:var(--color-surface-2)] disabled:cursor-not-allowed disabled:opacity-60 transition";
+  "inline-flex items-center justify-center h-9 rounded-control border-2 border-line bg-surface-light px-3 text-sm font-medium text-ink hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-60 transition";
 const dangerBtnClass =
-  "inline-flex items-center justify-center rounded-[var(--radius-control)] border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-4 h-10 text-sm font-medium text-[color:var(--color-danger)] hover:bg-[color:var(--color-danger-soft)]/70 disabled:cursor-not-allowed disabled:opacity-50 transition";
+  "inline-flex items-center justify-center h-9 rounded-control bg-[color:var(--color-danger)] px-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 transition";
+
 const inputClass =
-  "w-full rounded-[var(--radius-control)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] h-10 px-3 text-sm font-mono outline-none focus:ring-2 focus:ring-[color:var(--color-primary)] focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full h-10 rounded-control border-2 border-line bg-surface-light px-3 text-sm text-ink placeholder:text-ink-weak focus:outline-none focus:border-brand-500 transition-colors";
+
 const microLabelClass =
-  "block text-xs font-semibold uppercase tracking-wide text-[color:var(--color-fg-weak)]";
+  "block text-xs font-bold uppercase tracking-wide text-ink-weak";
+
 const pillClass =
-  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
+  "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold";
 
 function statusPillClass(status: string) {
   if (status === "active") {
-    return cn(pillClass, "bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]");
+    return cn(pillClass, "bg-accent-teal text-accent-teal-ink");
   }
   if (status === "pending") {
-    return cn(pillClass, "bg-[color:var(--color-warning-soft)] text-[color:var(--color-warning)]");
+    return cn(pillClass, "bg-[#fdeccc] text-[#8a5a06]");
   }
   if (status === "suspended") {
-    return cn(pillClass, "bg-[color:var(--color-danger-soft)] text-[color:var(--color-danger)]");
+    return cn(pillClass, "bg-[#fef3f2] text-[#b42318]");
   }
-  return cn(pillClass, "bg-[color:var(--color-surface-2)] text-[color:var(--color-fg-weak)]");
+  return cn(pillClass, "bg-surface-tag text-ink");
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -113,11 +119,11 @@ function Field({
         placeholder={placeholder} disabled={disabled}
         className={cn(
           inputClass,
-          error ? "border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger-soft)]/40 focus:ring-[color:var(--color-danger)]" : "",
+          error ? "border-[color:var(--color-danger)] bg-[#fef3f2] focus:border-[color:var(--color-danger)]" : "",
         )}
       />
       {error ? <p className="mt-1 text-[11px] text-[color:var(--color-danger)]">{error}</p>
-        : hint ? <p className="mt-1 text-[11px] text-[color:var(--color-fg-weak)]">{hint}</p> : null}
+        : hint ? <p className="mt-1 text-[11px] text-ink-weak">{hint}</p> : null}
     </label>
   );
 }
@@ -141,21 +147,21 @@ function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string
   return (
     <div>
       <span className={cn(microLabelClass, "mb-1")}>Tags</span>
-      <div className="flex min-h-[42px] flex-wrap gap-1.5 rounded-[var(--radius-control)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3 py-2 focus-within:ring-2 focus-within:ring-[color:var(--color-primary)] focus-within:ring-offset-1">
+      <div className="flex min-h-[42px] flex-wrap gap-1.5 rounded-control border-2 border-line bg-surface-light px-3 py-2 focus-within:border-brand-500 transition-colors">
         {tags.map((tag) => (
-          <span key={tag} className="flex items-center gap-1 rounded-full bg-[color:var(--color-surface-tag)] px-2.5 py-0.5 font-mono text-xs text-[color:var(--color-fg-default)]">
+          <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink">
             {tag}
-            <button type="button" onClick={() => onChange(tags.filter((t) => t !== tag))} className="ml-0.5 leading-none text-[color:var(--color-fg-weak)] hover:text-[color:var(--color-fg-strong)]">×</button>
+            <button type="button" onClick={() => onChange(tags.filter((t) => t !== tag))} className="ml-0.5 leading-none text-ink-weak hover:text-ink-strong">×</button>
           </span>
         ))}
         <input
           value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown} onBlur={() => { if (input) commit(input); }}
           placeholder={tags.length === 0 ? "e.g. customer-service, billing" : ""}
-          className="min-w-[160px] flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-[color:var(--color-fg-weak)]/60"
+          className="min-w-[160px] flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-weak"
         />
       </div>
-      <p className="mt-1 text-[11px] text-[color:var(--color-fg-weak)]">Press Enter or comma to add.</p>
+      <p className="mt-1 text-[11px] text-ink-weak">Press Enter or comma to add.</p>
     </div>
   );
 }
@@ -165,29 +171,29 @@ function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string
 function AgentCard({ agent, selected, onClick }: { agent: RegistryAgentRecord; selected: boolean; onClick: () => void }) {
   const status = (agent.metadata?.status as string) ?? "active";
   return (
-    <button
+    <article
       onClick={onClick}
       className={cn(
-        "w-full rounded-[var(--radius-card)] border p-4 text-left transition shadow-[var(--shadow-card)]",
+        "bg-surface-light rounded-card border shadow-card p-4 hover:shadow-card-hover transition cursor-pointer flex flex-col h-full gap-3 text-left",
         selected
-          ? "border-[color:var(--color-primary)] bg-[color:var(--color-primary-soft)]"
-          : "border-[color:var(--color-border)] bg-[color:var(--color-surface)] hover:border-[color:var(--color-border-strong)] hover:shadow-[var(--shadow-card-hover)]",
+          ? "border-brand-500 bg-brand-200/60"
+          : "border-line/70 hover:border-line-strong",
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate font-medium text-[color:var(--color-fg-strong)]">{agent.displayName}</span>
+        <h3 className="font-semibold text-ink-strong truncate">{agent.displayName}</h3>
         <span className={statusPillClass(status)}>{status}</span>
       </div>
-      <p className="mt-1 truncate font-mono text-xs text-[color:var(--color-fg-muted)]">{agent.identifier}</p>
+      <p className="font-mono text-xs text-ink-medium truncate">{agent.identifier}</p>
       {(agent.tags ?? []).length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-2 mt-auto">
           {(agent.tags ?? []).slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded-full bg-[color:var(--color-surface-tag)] px-2 py-0.5 font-mono text-[10px] text-[color:var(--color-fg-muted)]">{tag}</span>
+            <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink">{tag}</span>
           ))}
-          {(agent.tags ?? []).length > 3 && <span className="font-mono text-[10px] text-[color:var(--color-fg-weak)]">+{(agent.tags ?? []).length - 3}</span>}
+          {(agent.tags ?? []).length > 3 && <span className="text-xs text-ink-weak self-center">+{(agent.tags ?? []).length - 3}</span>}
         </div>
       )}
-    </button>
+    </article>
   );
 }
 
@@ -227,25 +233,25 @@ function ConnectScreen({
 
   return (
     <div className="mx-auto max-w-lg space-y-5">
-      <div className={cn(cardClass, "p-8 space-y-5")}>
+      <div className={cn(infoCardClass, "space-y-5")}>
         <div>
-          <h2 className="text-xl font-semibold text-[color:var(--color-fg-strong)]">Registry Manager</h2>
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+          <h2 className="font-semibold text-ink-strong text-lg">Registry Manager</h2>
+          <p className="mt-1 text-xs text-ink-medium">
             Sign in to manage your agents on the NANDA Registry.
           </p>
         </div>
 
         {/* Auth mode tabs */}
         <div>
-          <div className="mb-4 flex rounded-[var(--radius-control)] border border-[color:var(--color-border)] p-1 text-sm">
+          <div className="mb-4 flex rounded-control border-2 border-line p-1 text-sm">
             {([["login", "Sign in"], ["register", "Create account"]] as [AuthMode, string][]).map(([key, label]) => (
               <button
                 key={key} type="button"
                 onClick={() => { setAuthMode(key); setError(null); }}
-                className={cn("flex-1 rounded-[var(--radius-control)] py-1.5 text-xs font-medium transition",
+                className={cn("flex-1 rounded-control py-1.5 text-xs font-medium transition",
                   authMode === key
-                    ? "bg-[color:var(--color-primary)] text-white"
-                    : "text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg-strong)]")}
+                    ? "bg-brand-500 text-white"
+                    : "text-ink-medium hover:text-ink-strong")}
               >
                 {label}
               </button>
@@ -263,7 +269,7 @@ function ConnectScreen({
         </div>
 
         {error && (
-          <div className="rounded-[var(--radius-control)] border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-4 py-3 text-sm text-[color:var(--color-danger)]">{error}</div>
+          <div className="rounded-control border border-[color:var(--color-danger)]/30 bg-[#fef3f2] px-4 py-3 text-sm text-[color:var(--color-danger)]">{error}</div>
         )}
 
         <button
@@ -286,8 +292,8 @@ function AgentForm({ mode, form, patchForm, onSave, onCancel, saving, saveError 
   onSave: () => void; onCancel: () => void; saving: boolean; saveError: string | null;
 }) {
   return (
-    <div className={cn(cardClass, "p-6 space-y-4")}>
-      <h2 className="text-lg font-semibold text-[color:var(--color-fg-strong)]">
+    <div className={cn(infoCardClass, "space-y-4")}>
+      <h2 className="font-semibold text-ink-strong text-lg">
         {mode === "create" ? "New agent" : `Edit ${form.agent_id}`}
       </h2>
 
@@ -305,7 +311,7 @@ function AgentForm({ mode, form, patchForm, onSave, onCancel, saving, saveError 
         hint="How long resolvers should cache this agent record." />
 
       {saveError && (
-        <div className="rounded-[var(--radius-control)] border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-4 py-3 text-sm text-[color:var(--color-danger)]">{saveError}</div>
+        <div className="rounded-control border border-[color:var(--color-danger)]/30 bg-[#fef3f2] px-4 py-3 text-sm text-[color:var(--color-danger)]">{saveError}</div>
       )}
 
       <div className="flex gap-3">
@@ -464,16 +470,16 @@ export default function RegistryManagerPage() {
   return (
     <PageShell title="Registry Manager" description={session.registryUrl}>
       {/* Top bar */}
-      <div className={cn(cardClass, "mb-4 flex items-center justify-between px-4 py-2.5")}>
-        <div className="text-sm text-[color:var(--color-fg-muted)]">
+      <div className={cn(infoCardClass, "mb-4 flex items-center justify-between px-4 py-2.5")}>
+        <div className="text-sm text-ink-medium">
           {session.user
-            ? <><span className="font-medium text-[color:var(--color-fg-strong)]">{session.user.display_name ?? session.user.email}</span><span className="ml-2 text-xs text-[color:var(--color-fg-weak)]">{session.user.email}</span></>
-            : <span className="font-mono text-xs text-[color:var(--color-fg-muted)]">admin token</span>
+            ? <><span className="font-medium text-ink-strong">{session.user.display_name ?? session.user.email}</span><span className="ml-2 text-xs text-ink-weak">{session.user.email}</span></>
+            : <span className="font-mono text-xs text-ink-medium">admin token</span>
           }
         </div>
         <button
           onClick={signOut}
-          className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3 py-1 text-xs font-medium text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-fg-strong)] transition"
+          className="text-xs font-medium text-ink-weak hover:text-ink transition"
         >
           Disconnect
         </button>
@@ -488,7 +494,7 @@ export default function RegistryManagerPage() {
             </span>
             <button
               onClick={startCreate}
-              className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3 py-1 text-xs font-medium text-[color:var(--color-fg-default)] hover:bg-[color:var(--color-surface-2)] transition"
+              className={cn(primaryBtnClass, "h-8 px-3 text-xs")}
             >
               + New
             </button>
@@ -509,7 +515,7 @@ export default function RegistryManagerPage() {
             {searchQuery ? (
               <button
                 onClick={clearSearch}
-                className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2.5 py-1.5 text-xs text-[color:var(--color-fg-weak)] hover:bg-[color:var(--color-surface-2)] transition"
+                className={cn(secondaryBtnClass, "h-9 px-2.5 text-xs")}
               >
                 ✕
               </button>
@@ -517,7 +523,7 @@ export default function RegistryManagerPage() {
               <button
                 onClick={() => runSearch(searchQuery)}
                 disabled={!searchQuery.trim() || searching}
-                className="rounded-[var(--radius-control)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] h-9 px-3 text-xs font-medium text-[color:var(--color-fg-default)] hover:bg-[color:var(--color-surface-2)] disabled:opacity-40 transition"
+                className={cn(secondaryBtnClass, "h-9 px-3 text-xs disabled:opacity-40")}
               >
                 {searching ? "…" : "Go"}
               </button>
@@ -526,13 +532,13 @@ export default function RegistryManagerPage() {
 
           <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
             {visibleAgents.length === 0 ? (
-              <div className={cn(cardClass, "p-5 text-center")}>
+              <div className={cn(infoCardClass, "text-center")}>
                 {searchResults !== null ? (
-                  <p className="text-sm text-[color:var(--color-fg-muted)]">No agents match &ldquo;{searchQuery}&rdquo;</p>
+                  <p className="text-sm text-ink-medium">No agents match &ldquo;{searchQuery}&rdquo;</p>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-[color:var(--color-fg-strong)]">No agents yet</p>
-                    <button onClick={startCreate} className={cn(primaryBtnClass, "mt-3 h-9 px-4 text-xs")}>
+                    <p className="text-sm font-semibold text-ink-strong">No agents yet</p>
+                    <button onClick={startCreate} className={cn(primaryBtnClass, "mt-3")}>
                       + New agent
                     </button>
                   </>
@@ -555,43 +561,43 @@ export default function RegistryManagerPage() {
           ) : selected ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <button onClick={startEdit} className={secondaryBtnClass}>Edit</button>
+                <button onClick={startEdit} className={primaryBtnClass}>Edit</button>
                 <button onClick={deleteAgent} disabled={deleting} className={dangerBtnClass}>
                   {deleting ? "Deleting…" : "Delete"}
                 </button>
               </div>
 
-              <div className={cn(cardClass, "p-6 space-y-3")}>
+              <div className={cn(infoCardClass, "space-y-3")}>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold text-[color:var(--color-fg-strong)]">{selected.displayName}</h2>
+                    <h2 className="font-semibold text-ink-strong text-lg">{selected.displayName}</h2>
                     <span className={statusPillClass(String(selected.metadata?.status ?? "active"))}>
                       {String(selected.metadata?.status ?? "active")}
                     </span>
                   </div>
-                  <p className="font-mono text-xs text-[color:var(--color-fg-muted)]">{selected.identifier}</p>
+                  <p className="font-mono text-xs text-ink-medium">{selected.identifier}</p>
                 </div>
 
-                {selected.description && <p className="text-sm text-[color:var(--color-fg-default)]">{selected.description}</p>}
+                {selected.description && <p className="text-sm text-ink leading-relaxed">{selected.description}</p>}
 
                 <div className="space-y-2 text-sm">
                   <div>
                     <span className={microLabelClass}>Card URL</span>
                     <a href={selected.url} target="_blank" rel="noopener noreferrer"
-                      className="mt-0.5 block break-all font-mono text-xs text-[color:var(--color-primary)] hover:text-[color:var(--color-primary-hover)] hover:underline">
+                      className="mt-0.5 block break-all font-mono text-xs text-brand-500 hover:text-brand-600 hover:underline">
                       {selected.url}
                     </a>
                   </div>
                   <div>
                     <span className={microLabelClass}>TTL</span>
-                    <p className="mt-0.5 font-mono text-xs text-[color:var(--color-fg-default)]">{selected.metadata?.ttl_seconds ?? "—"}s</p>
+                    <p className="mt-0.5 font-mono text-xs text-ink">{selected.metadata?.ttl_seconds ?? "—"}s</p>
                   </div>
                   {(selected.tags ?? []).length > 0 && (
                     <div>
                       <span className={microLabelClass}>Tags</span>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {(selected.tags ?? []).map((tag) => (
-                          <span key={tag} className="rounded-full bg-[color:var(--color-surface-tag)] px-2.5 py-1 font-mono text-xs text-[color:var(--color-fg-default)]">{tag}</span>
+                          <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink">{tag}</span>
                         ))}
                       </div>
                     </div>
@@ -602,9 +608,9 @@ export default function RegistryManagerPage() {
               <JsonPanel data={selected} />
             </div>
           ) : (
-            <div className={cn(cardClass, cardHoverClass, "p-8 text-center")}>
-              <p className="text-sm font-medium text-[color:var(--color-fg-strong)]">Select an agent</p>
-              <p className="mt-1 text-xs text-[color:var(--color-fg-weak)]">Choose from the list, or create a new one.</p>
+            <div className={cn(infoCardClass, "text-center")}>
+              <p className="text-sm font-semibold text-ink-strong">Select an agent</p>
+              <p className="mt-1 text-xs text-ink-weak">Choose from the list, or create a new one.</p>
             </div>
           )}
         </div>

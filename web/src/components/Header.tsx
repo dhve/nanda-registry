@@ -2,25 +2,31 @@ import Link from "next/link";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)]/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex min-w-0 items-center">
-          <span
-            aria-hidden
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-card)] bg-[color:var(--color-primary-deep)] text-sm font-semibold tracking-wide text-white"
+    <header className="bg-surface-light border-b border-line sticky top-0 z-30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-[60px] items-center justify-between gap-4">
+          {/* LEFT: brand link */}
+          <Link
+            href="/"
+            className="flex items-center gap-3 min-w-0 rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
           >
-            NR
-          </span>
-          <span className="ml-3 hidden h-6 border-l border-[color:var(--color-border)] sm:block" />
-          <span className="ml-3 hidden min-w-0 flex-col leading-tight sm:flex">
-            <span className="truncate text-base font-semibold text-[color:var(--color-fg-strong)]">
-              Nanda Registry
+            <span
+              aria-hidden
+              className="inline-flex h-8 w-8 items-center justify-center rounded-card bg-brand-800 text-white text-xs font-semibold tracking-wide"
+            >
+              NR
             </span>
-            <span className="truncate text-xs text-[color:var(--color-fg-weak)]">
-              Agent registry &amp; directory
+            <span className="hidden sm:block h-6 border-l border-line" />
+            <span className="hidden sm:flex flex-col leading-tight min-w-0">
+              <span className="font-semibold text-ink-strong truncate">
+                Nanda Registry
+              </span>
+              <span className="text-xs text-ink-weak truncate">
+                Agent registry &amp; directory
+              </span>
             </span>
-          </span>
-        </Link>
+          </Link>
+        </div>
       </div>
     </header>
   );
