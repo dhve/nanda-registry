@@ -1,235 +1,270 @@
 # NANDA Registry
 
-A self-hosted agent catalog that organizations run on their own infrastructure. It stores `CatalogEntry` records — one per agent — and serves them in the [AI Catalog](https://spec.aicatalog.org) format (`application/ai-catalog+json`).
+A self-hosted agent catalog that organizations run on their own infrastructure. It stores one `CatalogEntry` per agent and serves them in the [AI Catalog](https://spec.aicatalog.org) format.
 
-Clone this repo, deploy it, point your NANDA Index record at it, and your agents are discoverable.
-
-## How it fits in the resolution flow
+In the resolution chain, NANDA Registry is **hop 2**:
 
 ```
-Caller  →  NANDA Index          GET /api/v1/resolve?locator=urn:ai:nasiko.com:ankit
-        ←  { registry_url }     "agents for nasiko.com live at https://registry.nasiko.com"
-
-Caller  →  NANDA Registry       GET https://registry.nasiko.com/agents/ankit   ← this server
-        ←  { url }              "ankit's facts document is at https://nasiko.com/agents/ankit.json"
-
-Caller  →  Facts URL            GET https://nasiko.com/agents/ankit.json
-        ←  Agent capability document  (A2A card or equivalent)
+Requester → NANDA Index → NANDA Registry → Agent Runtime
 ```
 
-The registry handles hop 2. Public reads, authenticated writes.
+NANDA Index tells you which registry to call. NANDA Registry tells you where the specific agent card lives.
 
 ---
 
-## Quick start
+## What it does
+
+- Stores agent entries (identifier, display name, facts URL, media type, tags)
+- Serves `GET /agents/:agent_id` for single-agent lookups
+- Serves `GET /.well-known/ai-catalog.json` as the AI Catalog discovery endpoint
+- Provides a web UI for managing agents
+- Requires JWT auth for write operations; all reads are public
+
+---
+
+## Stack
+
+- **API:** Fastify 5, TypeScript, Node.js 20
+- **Database:** PostgreSQL 16, postgres.js v3
+- **Frontend:** Next.js 15, TailwindCSS v4
+- **Auth:** Email/password, JWT
+- **Proxy:** Caddy 2 (TLS auto-provisioned)
+
+---
+
+## Local Development
 
 ```bash
+git clone https://github.com/your-org/nanda-registry
+cd nanda-registry
 cp .env.example .env
-# Edit .env — set JWT_SECRET to a strong random value
 docker compose up --build
 ```
 
-| Service    | URL                    |
-|------------|------------------------|
-| API        | http://localhost:3002  |
-| Web UI     | http://localhost:3003  |
-| API Docs   | http://localhost:3002/docs |
+| Service | URL |
+|---------|-----|
+| Web UI  | http://localhost:3003 |
+| API     | http://localhost:3002 |
+| API Docs | http://localhost:3002/docs |
+| DB      | localhost:5434 |
 
 ---
 
-## Environment variables
+## Production Deployment
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | yes | — | Postgres connection string |
-| `JWT_SECRET` | yes (prod) | dev default | Must be ≥ 32 chars in production |
-| `JWT_EXPIRES_IN` | no | `7d` | Token lifetime |
-| `PORT` | no | `3002` | API server port |
-| `DB_MAX_CONNECTIONS` | no | `10` | Postgres connection pool size |
+### Prerequisites
 
----
+- VPS with 2GB RAM (add swap on 1GB servers)
+- Docker and Docker Compose installed
+- DNS A records:
+  - `registry.yourdomain.com` → server IP
+  - `api.registry.yourdomain.com` → server IP (or use path-based routing)
 
-## API reference
-
-### Auth
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/auth/register` | — | Create account with email + password |
-| `POST` | `/auth/login` | — | Sign in, returns JWT |
-| `GET` | `/auth/me` | JWT | Current user profile |
-
-### Catalog (public reads)
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/agents` | — | All active agents as a `CatalogDocument` |
-| `GET` | `/agents/:agent_id` | — | Single agent as a `CatalogEntry` |
-| `GET` | `/agents/search` | — | Search by keyword or URN (`?q=`) |
-| `GET` | `/.well-known/ai-catalog.json` | — | AI Catalog discovery endpoint |
-
-### Catalog (protected writes)
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/agents` | JWT | Register a new agent |
-| `PUT` | `/agents/:agent_id` | JWT | Update agent fields |
-| `DELETE` | `/agents/:agent_id` | JWT | Remove an agent |
-
-### Health
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Liveness probe — `{ status, db }` |
-
-#### Search
-
-```
-GET /agents/search?q=weather
-  → searches identifier, display_name, description, tags (case-insensitive)
-
-GET /agents/search?q=urn:ai:nasiko.com:ankit
-  → URN fast-path: extracts "ankit" and does a direct identifier lookup
-```
-
-#### Response formats
-
-`CatalogDocument` (list endpoints):
-```json
-{
-  "specVersion": "1.0",
-  "entries": [ ...CatalogEntry ]
-}
-```
-
-`CatalogEntry` (single agent):
-```json
-{
-  "identifier": "ankit",
-  "displayName": "Ankit Agent",
-  "url": "https://nasiko.com/agents/ankit.json",
-  "mediaType": "application/a2a-agent-card+json",
-  "description": "...",
-  "tags": ["search", "qa"],
-  "version": "1.0.0",
-  "updatedAt": "2026-06-09T00:00:00Z",
-  "metadata": { "ttlSeconds": 3600, "status": "active" }
-}
-```
-
-#### Error shape
-
-All errors return:
-```json
-{ "error": "ERROR_CODE", "detail": "human-readable message" }
-```
-
----
-
-## Database schema
-
-### `agents`
-One row per registered agent.
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | UUID | Primary key |
-| `agent_id` | VARCHAR(64) | Unique slug, e.g. `ankit`. Lowercase, hyphens only. |
-| `display_name` | VARCHAR(255) | Human-readable name |
-| `description` | TEXT | Optional |
-| `url` | VARCHAR(512) | Agent facts document URL (hop 3 target) |
-| `media_type` | VARCHAR(255) | Default `application/a2a-agent-card+json` |
-| `version` | VARCHAR(64) | Optional semver |
-| `tags` | TEXT[] | Searchable labels |
-| `ttl_seconds` | INTEGER | Cache hint. Default 3600 (1h) |
-| `status` | VARCHAR(20) | `active` or `inactive` |
-| `created_at` | TIMESTAMPTZ | |
-| `updated_at` | TIMESTAMPTZ | |
-
-### `users`
-Accounts for org members who manage this registry.
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | UUID | Primary key |
-| `email` | VARCHAR(255) | Unique |
-| `display_name` | VARCHAR(255) | Optional |
-| `password_hash` | VARCHAR(255) | bcrypt, 10 rounds |
-| `created_at` | TIMESTAMPTZ | |
-| `updated_at` | TIMESTAMPTZ | |
-
----
-
-## Local development (without Docker)
+### Steps
 
 ```bash
-# 1. Start Postgres
-docker compose up db -d
+# 1. Clone
+git clone https://github.com/your-org/nanda-registry
+cd nanda-registry
 
-# 2. Install dependencies
-cd server && npm install
+# 2. Configure
+cp .env.example .env.prod
+# Edit .env.prod
 
-# 3. Create server/.env
-cat > .env <<EOF
-DATABASE_URL=postgresql://registry:registry-local@localhost:5434/nanda_registry
-PORT=3002
-NODE_ENV=development
-EOF
+# 3. Build and start
+docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
 
-# 4. Run migrations + start
-npm run migrate
-npm run dev
+# 4. Verify
+curl https://api.registry.yourdomain.com/health
+curl https://api.registry.yourdomain.com/.well-known/ai-catalog.json
 ```
 
-```bash
-# Web (separate terminal)
-cd web && npm install && npm run dev
+### Environment Variables
+
+```env
+# Database
+POSTGRES_PASSWORD=          # strong random password
+
+# JWT — generate with: openssl rand -hex 64
+JWT_SECRET=
+JWT_EXPIRES_IN=7d
+
+DB_MAX_CONNECTIONS=10
 ```
-
-### Running tests
-
-```bash
-cd server && npm test
-```
-
-Tests use `fastify.inject()` against a real database — ensure Postgres is running before running tests.
 
 ---
 
-## Registering your first agent
+## Registering Agents
+
+### Step 1: Create an admin account
 
 ```bash
-# 1. Create an account
-curl -X POST http://localhost:3002/auth/register \
+curl -X POST https://api.registry.yourdomain.com/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "password": "yourpassword"}'
+  -d '{"email":"admin@yourdomain.com","password":"yourpassword"}'
+# Returns: { "token": "eyJ..." }
+```
 
-# 2. Sign in
-TOKEN=$(curl -s -X POST http://localhost:3002/auth/login \
+### Step 2: Create an agent
+
+```bash
+TOKEN="eyJ..."
+
+curl -X POST https://api.registry.yourdomain.com/agents \
   -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "password": "yourpassword"}' | jq -r .token)
-
-# 3. Register an agent
-curl -X POST http://localhost:3002/agents \
   -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
   -d '{
-    "agent_id": "my-agent",
-    "display_name": "My Agent",
-    "url": "https://example.com/agents/my-agent.json",
-    "tags": ["search"]
+    "agent_id": "support",
+    "display_name": "Customer Support Agent",
+    "url": "https://agents.yourdomain.com/support/card.json",
+    "media_type": "application/a2a-agent-card+json",
+    "description": "Handles customer queries, ticket creation, and escalation.",
+    "tags": ["support", "customer-service"],
+    "version": "1.0"
   }'
 ```
 
+### Step 3: Register your registry in NANDA Index
+
+```bash
+curl -X POST https://api.nandaindex.org/api/v1/orgs \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <nanda-index-token>" \
+  -d '{
+    "org_id": "yourdomain",
+    "display_name": "Your Org",
+    "hosting_path": "registry",
+    "domain": "yourdomain.com",
+    "contact_email": "agents@yourdomain.com",
+    "registry_url": "https://api.registry.yourdomain.com",
+    "identifier": "urn:ai:domain:yourdomain.com",
+    "media_type": "application/ai-catalog+json",
+    "publisher": {
+      "identifier": "urn:ai:domain:yourdomain.com",
+      "displayName": "Your Org",
+      "identityType": "dns"
+    },
+    "catalog_metadata": {
+      "org.projectnanda.preferredDiscovery": "ai-catalog",
+      "org.projectnanda.resolutionRole": "nested-ai-catalog"
+    }
+  }'
+```
+
+Now `urn:ai:domain:yourdomain.com:agent:support` resolves end-to-end.
+
 ---
 
-## Tech stack
+## Schema
 
-| Concern | Technology |
-|---|---|
-| Runtime | Node.js 20, TypeScript |
-| Framework | Fastify 5 |
-| Database | PostgreSQL 16, postgres.js (no ORM) |
-| Auth | @fastify/jwt, bcryptjs |
-| Tests | Vitest + fastify.inject() |
-| Frontend | Next.js 15, Tailwind CSS 4 |
+### CatalogEntry (API response)
+
+```typescript
+interface CatalogEntry {
+  identifier:   string;   // e.g. "support" — the agent_id
+  displayName:  string;
+  mediaType:    string;   // e.g. "application/a2a-agent-card+json"
+  url:          string;   // the A2A Agent Card URL (facts URL)
+  description:  string | null;
+  tags:         string[];
+  version:      string | null;
+  updatedAt:    string;
+}
+
+interface CatalogDocument {
+  specVersion: "1.0";
+  entries:     CatalogEntry[];
+}
+```
+
+### Database tables
+
+```sql
+-- Agent entries
+CREATE TABLE agents (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id     VARCHAR(64) UNIQUE NOT NULL,  -- slug, e.g. "support"
+  display_name VARCHAR(255) NOT NULL,
+  description  TEXT,
+  url          VARCHAR(512) NOT NULL,         -- A2A card / facts URL
+  media_type   VARCHAR(255) NOT NULL DEFAULT 'application/a2a-agent-card+json',
+  version      VARCHAR(64),
+  tags         TEXT[] NOT NULL DEFAULT '{}',
+  status       VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Admin accounts
+CREATE TABLE users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         VARCHAR(255) UNIQUE NOT NULL,
+  display_name  VARCHAR(255),
+  password_hash VARCHAR(255) NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+---
+
+## API Reference
+
+### Auth
+
+| Method | Path | Body | Response |
+|--------|------|------|----------|
+| `POST` | `/auth/register` | `{ email, password, display_name? }` | `{ token }` |
+| `POST` | `/auth/login` | `{ email, password }` | `{ token }` |
+| `GET`  | `/auth/me` | — | User profile |
+
+### Public (no auth)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/.well-known/ai-catalog.json` | Full catalog as CatalogDocument |
+| `GET` | `/agents` | All active agents as CatalogDocument |
+| `GET` | `/agents/search?q=<query>` | Keyword or URN search |
+| `GET` | `/agents/:agent_id` | Single CatalogEntry |
+| `GET` | `/health` | `{ "status": "ok", "db": "ok" }` |
+
+### Protected (JWT required)
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| `POST`   | `/agents` | CatalogEntry fields | Create agent |
+| `PUT`    | `/agents/:agent_id` | Partial CatalogEntry | Update agent |
+| `DELETE` | `/agents/:agent_id` | — | Delete agent |
+
+### Create Agent payload
+
+```json
+{
+  "agent_id":     "support",
+  "display_name": "Customer Support Agent",
+  "url":          "https://agents.yourdomain.com/support/card.json",
+  "media_type":   "application/a2a-agent-card+json",
+  "description":  "Handles customer queries and ticket creation.",
+  "tags":         ["support", "customer-service"],
+  "version":      "1.0"
+}
+```
+
+### Search
+
+```bash
+# Keyword search
+curl "https://api.registry.yourdomain.com/agents/search?q=support"
+
+# URN fast-path (extracts agent_id and does direct lookup)
+curl "https://api.registry.yourdomain.com/agents/search?q=urn:ai:yourdomain.com:support"
+```
+
+---
+
+## Health Check
+
+```bash
+curl https://api.registry.yourdomain.com/health
+# { "status": "ok", "db": "ok" }
+```
