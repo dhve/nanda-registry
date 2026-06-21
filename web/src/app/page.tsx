@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { fetchRegistryAgents } from "@/lib/registry-api";
+import type { RegistryAgentRecord } from "@/lib/registry-types";
 
-// ── Seed data ─────────────────────────────────────────────────────────────────
-
-type SeedAgent = {
+// View-model for an agent card in the Explore grid.
+type AgentVM = {
   id: string;
   name: string;
   type: "A2A" | "MCP" | "REST";
@@ -12,253 +13,116 @@ type SeedAgent = {
   date: string;
   identifier: string;
   description: string;
+  url: string;
   tags: string[];
   verified: boolean;
   typeBadge: string;
   status: "Active" | "Inactive";
 };
 
-const SEED_AGENTS: SeedAgent[] = [
-  {
-    id: "flights",
-    name: "Flight Booking",
-    type: "A2A",
-    version: "1.4.2",
-    date: "6/18/2026",
-    identifier: "agent:travel26/flights",
-    description:
-      "Search, compare and book commercial flights across major airlines with multi-city itinerary support.",
-    tags: ["travel", "booking", "flights"],
-    verified: true,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "hotels",
-    name: "Hotel Booking",
-    type: "A2A",
-    version: "1.2.0",
-    date: "6/15/2026",
-    identifier: "agent:travel26/hotels",
-    description:
-      "Find and reserve hotels worldwide with live availability, loyalty programs and room-type preferences.",
-    tags: ["travel", "booking", "hotels"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "car-rental",
-    name: "Car Rental",
-    type: "A2A",
-    version: "0.9.7",
-    date: "6/12/2026",
-    identifier: "agent:travel26/car-rental",
-    description:
-      "Reserve rental vehicles across global providers with insurance, driver options and pickup logistics.",
-    tags: ["travel", "booking", "cars"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "travel-insurance",
-    name: "Travel Insurance",
-    type: "A2A",
-    version: "1.1.0",
-    date: "6/10/2026",
-    identifier: "agent:travel26/travel-insurance",
-    description:
-      "Quote and purchase travel insurance policies that match your itinerary, coverage tier and medical needs.",
-    tags: ["travel", "finance", "insurance"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "visa",
-    name: "Visa Assistant",
-    type: "A2A",
-    version: "1.0.3",
-    date: "6/08/2026",
-    identifier: "agent:travel26/visa",
-    description:
-      "Check visa requirements, prefill applications and track issuance status across 190+ destinations.",
-    tags: ["travel", "legal", "visa"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "airport-transfer",
-    name: "Airport Transfers",
-    type: "A2A",
-    version: "0.8.4",
-    date: "6/05/2026",
-    identifier: "agent:travel26/airport-transfer",
-    description:
-      "Schedule ground transportation between airports and your accommodations with live ETA tracking.",
-    tags: ["travel", "transport"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "tours",
-    name: "Tour Packages",
-    type: "A2A",
-    version: "1.3.1",
-    date: "6/01/2026",
-    identifier: "agent:travel26/tours",
-    description:
-      "Browse and book curated tour packages including guides, activities and group experiences.",
-    tags: ["travel", "booking", "tours"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Active",
-  },
-  {
-    id: "cruises",
-    name: "Cruise Booking",
-    type: "A2A",
-    version: "1.0.0",
-    date: "5/28/2026",
-    identifier: "agent:travel26/cruises",
-    description:
-      "Compare and reserve cruise itineraries across major lines with cabin selection and excursions.",
-    tags: ["travel", "booking", "cruises"],
-    verified: false,
-    typeBadge: "A2A",
-    status: "Inactive",
-  },
-  {
-    id: "code-reviewer",
-    name: "Code Reviewer",
-    type: "MCP",
-    version: "2.1.0",
-    date: "6/20/2026",
-    identifier: "agent:dev/code-reviewer",
-    description:
-      "Automated code review across pull requests with style, security and test-coverage feedback.",
-    tags: ["dev", "code", "review"],
-    verified: true,
-    typeBadge: "MCP",
-    status: "Active",
-  },
-  {
-    id: "data-analyst",
-    name: "Data Analyst",
-    type: "MCP",
-    version: "1.5.2",
-    date: "6/17/2026",
-    identifier: "agent:data/data-analyst",
-    description:
-      "Run ad-hoc analyses across warehouse tables and produce summaries, charts and follow-up questions.",
-    tags: ["data", "analytics"],
-    verified: false,
-    typeBadge: "MCP",
-    status: "Active",
-  },
-  {
-    id: "sql-assistant",
-    name: "SQL Assistant",
-    type: "MCP",
-    version: "1.2.4",
-    date: "6/14/2026",
-    identifier: "agent:data/sql-assistant",
-    description:
-      "Compose, explain and optimize SQL across Postgres, Snowflake and BigQuery dialects.",
-    tags: ["data", "sql", "dev"],
-    verified: false,
-    typeBadge: "MCP",
-    status: "Active",
-  },
-  {
-    id: "document-summarizer",
-    name: "Document Summarizer",
-    type: "MCP",
-    version: "1.0.8",
-    date: "6/11/2026",
-    identifier: "agent:ai/document-summarizer",
-    description:
-      "Summarize long PDFs, web pages and meeting transcripts into structured briefs.",
-    tags: ["ai", "docs"],
-    verified: false,
-    typeBadge: "MCP",
-    status: "Active",
-  },
-  {
-    id: "api-tester",
-    name: "API Tester",
-    type: "REST",
-    version: "0.7.1",
-    date: "6/09/2026",
-    identifier: "agent:dev/api-tester",
-    description:
-      "Generate request fixtures, replay traffic and validate OpenAPI contracts against live services.",
-    tags: ["dev", "testing", "api"],
-    verified: false,
-    typeBadge: "REST",
-    status: "Active",
-  },
-  {
-    id: "security-scanner",
-    name: "Security Scanner",
-    type: "MCP",
-    version: "2.0.3",
-    date: "6/06/2026",
-    identifier: "agent:security/security-scanner",
-    description:
-      "Continuously scan repositories and runtime environments for vulnerabilities and policy drift.",
-    tags: ["security", "scanning"],
-    verified: true,
-    typeBadge: "MCP",
-    status: "Active",
-  },
-  {
-    id: "incident-responder",
-    name: "Incident Responder",
-    type: "MCP",
-    version: "1.4.0",
-    date: "6/03/2026",
-    identifier: "agent:ops/incident-responder",
-    description:
-      "Triage on-call alerts, correlate signals and draft postmortems with linked evidence.",
-    tags: ["ops", "incident"],
-    verified: false,
-    typeBadge: "MCP",
-    status: "Active",
-  },
-];
-
-const PROTOCOL_OPTIONS: Array<SeedAgent["type"]> = ["A2A", "MCP", "REST"];
-const STATUS_OPTIONS: Array<SeedAgent["status"]> = ["Active", "Inactive"];
-const TAG_OPTIONS = [
-  "travel",
-  "booking",
-  "support",
-  "data",
-  "observability",
-  "security",
-  "dev",
-  "ops",
-  "communication",
-];
-
 const PAGE_SIZE = 6;
+
+const REGISTRY_BASE_URL =
+  process.env.NEXT_PUBLIC_REGISTRY_API_URL || "https://travel26.net/api";
+
+function deriveTypeBadge(mediaType: string): "A2A" | "MCP" | "REST" {
+  const mt = (mediaType ?? "").toLowerCase();
+  if (mt.includes("a2a")) return "A2A";
+  if (mt.includes("mcp")) return "MCP";
+  return "REST";
+}
+
+function formatDate(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString();
+}
+
+function toViewModel(rec: RegistryAgentRecord): AgentVM {
+  const badge = deriveTypeBadge(rec.mediaType);
+  const status: "Active" | "Inactive" =
+    rec.metadata?.status === "inactive" ? "Inactive" : "Active";
+  return {
+    id: rec.identifier,
+    name: rec.displayName?.trim() || rec.identifier,
+    type: badge,
+    version: rec.version ?? "v1.0",
+    date: formatDate(rec.updatedAt),
+    identifier: rec.identifier,
+    description: rec.description ?? "",
+    url: rec.url,
+    tags: rec.tags ?? [],
+    verified: rec.metadata?.status === "active",
+    typeBadge: badge,
+    status,
+  };
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const [records, setRecords] = useState<AgentVM[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [protocols, setProtocols] = useState<Set<string>>(new Set());
   const [statuses, setStatuses] = useState<Set<string>>(new Set());
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchRegistryAgents(REGISTRY_BASE_URL, "")
+      .then((entries) => {
+        if (cancelled) return;
+        setRecords(entries.map(toViewModel));
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Derive filter options from real data.
+  const protocolOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => set.add(r.type));
+    return Array.from(set).sort();
+  }, [records]);
+
+  const statusOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => set.add(r.status));
+    return Array.from(set).sort();
+  }, [records]);
+
+  const tagOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => r.tags.forEach((t) => set.add(t)));
+    return Array.from(set).sort().slice(0, 30);
+  }, [records]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return SEED_AGENTS.filter((a) => {
+    return records.filter((a) => {
       if (q && !a.name.toLowerCase().includes(q) && !a.identifier.toLowerCase().includes(q)) {
         return false;
       }
@@ -267,7 +131,7 @@ export default function HomePage() {
       if (tags.size > 0 && !a.tags.some((t) => tags.has(t))) return false;
       return true;
     });
-  }, [search, protocols, statuses, tags]);
+  }, [records, search, protocols, statuses, tags]);
 
   const total = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, total);
@@ -298,6 +162,9 @@ export default function HomePage() {
             setSearch(v);
             setPage(1);
           }}
+          protocolOptions={protocolOptions}
+          statusOptions={statusOptions}
+          tagOptions={tagOptions}
           protocols={protocols}
           onToggleProtocol={(v) => toggle(protocols, v, setProtocols)}
           statuses={statuses}
@@ -307,7 +174,27 @@ export default function HomePage() {
         />
 
         <div className="flex-1 min-w-0">
-          {pageItems.length > 0 ? (
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-surface-strong h-[200px] rounded-card animate-pulse"
+                />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="bg-surface-light rounded-card border border-line p-8 text-center">
+              <p className="text-sm font-semibold text-ink-strong">
+                Could not reach {hostnameOf(REGISTRY_BASE_URL)}. Check that the API is running.
+              </p>
+              <p className="mt-2 font-mono text-xs text-ink-weak break-all">{error}</p>
+            </div>
+          ) : records.length === 0 ? (
+            <div className="bg-surface-light rounded-card border border-line p-8 text-center">
+              <p className="text-sm font-semibold text-ink-medium">No agents registered yet.</p>
+            </div>
+          ) : pageItems.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {pageItems.map((agent) => (
                 <AgentCard key={agent.id} agent={agent} />
@@ -320,12 +207,14 @@ export default function HomePage() {
             </div>
           )}
 
-          <Pagination
-            page={currentPage}
-            total={total}
-            pages={pages}
-            onChange={(p) => setPage(p)}
-          />
+          {!loading && !error && records.length > 0 && (
+            <Pagination
+              page={currentPage}
+              total={total}
+              pages={pages}
+              onChange={(p) => setPage(p)}
+            />
+          )}
         </div>
       </div>
     </main>
@@ -337,6 +226,9 @@ export default function HomePage() {
 function FilterSidebar({
   search,
   onSearch,
+  protocolOptions,
+  statusOptions,
+  tagOptions,
   protocols,
   onToggleProtocol,
   statuses,
@@ -346,6 +238,9 @@ function FilterSidebar({
 }: {
   search: string;
   onSearch: (v: string) => void;
+  protocolOptions: string[];
+  statusOptions: string[];
+  tagOptions: string[];
   protocols: Set<string>;
   onToggleProtocol: (v: string) => void;
   statuses: Set<string>;
@@ -380,20 +275,24 @@ function FilterSidebar({
             Protocol
           </span>
           <div className="space-y-1.5">
-            {PROTOCOL_OPTIONS.map((opt) => (
-              <label
-                key={opt}
-                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={protocols.has(opt)}
-                  onChange={() => onToggleProtocol(opt)}
-                  className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
-                />
-                <span>{opt}</span>
-              </label>
-            ))}
+            {protocolOptions.length === 0 ? (
+              <p className="text-xs text-ink-weak">No options</p>
+            ) : (
+              protocolOptions.map((opt) => (
+                <label
+                  key={opt}
+                  className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={protocols.has(opt)}
+                    onChange={() => onToggleProtocol(opt)}
+                    className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+                  />
+                  <span>{opt}</span>
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -403,20 +302,24 @@ function FilterSidebar({
             Status
           </span>
           <div className="space-y-1.5">
-            {STATUS_OPTIONS.map((opt) => (
-              <label
-                key={opt}
-                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={statuses.has(opt)}
-                  onChange={() => onToggleStatus(opt)}
-                  className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
-                />
-                <span>{opt}</span>
-              </label>
-            ))}
+            {statusOptions.length === 0 ? (
+              <p className="text-xs text-ink-weak">No options</p>
+            ) : (
+              statusOptions.map((opt) => (
+                <label
+                  key={opt}
+                  className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={statuses.has(opt)}
+                    onChange={() => onToggleStatus(opt)}
+                    className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+                  />
+                  <span>{opt}</span>
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -426,20 +329,24 @@ function FilterSidebar({
             Tags
           </span>
           <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-            {TAG_OPTIONS.map((t) => (
-              <label
-                key={t}
-                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={tags.has(t)}
-                  onChange={() => onToggleTag(t)}
-                  className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
-                />
-                <span className="truncate">{t}</span>
-              </label>
-            ))}
+            {tagOptions.length === 0 ? (
+              <p className="text-xs text-ink-weak">No tags</p>
+            ) : (
+              tagOptions.map((t) => (
+                <label
+                  key={t}
+                  className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={tags.has(t)}
+                    onChange={() => onToggleTag(t)}
+                    className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+                  />
+                  <span className="truncate">{t}</span>
+                </label>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -449,7 +356,7 @@ function FilterSidebar({
 
 // ── AgentCard ─────────────────────────────────────────────────────────────────
 
-function AgentCard({ agent }: { agent: SeedAgent }) {
+function AgentCard({ agent }: { agent: AgentVM }) {
   return (
     <article
       role="button"
@@ -477,7 +384,8 @@ function AgentCard({ agent }: { agent: SeedAgent }) {
             )}
           </div>
           <div className="mt-0.5 text-xs text-ink-weak">
-            Version {agent.version} • {agent.date}
+            Version {agent.version}
+            {agent.date ? ` • ${agent.date}` : ""}
           </div>
         </div>
         {agent.typeBadge && (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const AGENT_COUNT = 12;
+const AGENT_COUNT = 30;
 
 export function Header() {
   return (
