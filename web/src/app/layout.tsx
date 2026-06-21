@@ -12,11 +12,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "NANDA Registry",
-  description: "Self-hosted agent catalog — manage and serve AI agent entries.",
+  description: "Self-hosted agent catalog - manage and serve AI agent entries.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   openGraph: {
     title: "NANDA Registry",
-    description: "Self-hosted agent catalog — manage and serve AI agent entries.",
+    description: "Self-hosted agent catalog - manage and serve AI agent entries.",
     type: "website",
   },
 };

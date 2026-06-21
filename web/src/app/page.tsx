@@ -1,620 +1,567 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { PageShell } from "@/components/PageShell";
-import { JsonPanel } from "@/components/JsonPanel";
-import { cn } from "@/lib/utils";
-import type {
-  RegistryAgentRecord,
-  RegistryAgentCreatePayload,
-  RegistryAgentUpdatePayload,
-  RegistryUser,
-} from "@/lib/registry-types";
-import {
-  RegistryApiError,
-  createRegistryAgent,
-  deleteRegistryAgent,
-  fetchRegistryAgents,
-  searchRegistryAgents,
-  updateRegistryAgent,
-  loginToRegistry,
-  registerOnRegistry,
-  getRegistryMe,
-} from "@/lib/registry-api";
+import { useMemo, useState } from "react";
 
-const REGISTRY_API_URL = process.env.NEXT_PUBLIC_REGISTRY_API_URL ?? "";
+// ── Seed data ─────────────────────────────────────────────────────────────────
 
-// ── Shared primitives (Outshift exact utility-class strings) ─────────────────
-
-// Card grid item (interactive selectable card) — see CANONICAL.md article pattern
-const cardClass =
-  "bg-surface-light rounded-card border border-line/70 shadow-card p-4 hover:shadow-card-hover hover:border-line-strong transition flex flex-col h-full gap-3";
-// Static info/settings/form card — more padding, no hover
-const infoCardClass =
-  "bg-surface-light rounded-card border border-line p-6 shadow-card";
-
-const primaryBtnClass =
-  "inline-flex items-center justify-center h-9 rounded-control bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 transition";
-const secondaryBtnClass =
-  "inline-flex items-center justify-center h-9 rounded-control border-2 border-line bg-surface-light px-3 text-sm font-medium text-ink hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-60 transition";
-const dangerBtnClass =
-  "inline-flex items-center justify-center h-9 rounded-control bg-[color:var(--color-danger)] px-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 transition";
-
-const inputClass =
-  "w-full h-10 rounded-control border-2 border-line bg-surface-light px-3 text-sm text-ink placeholder:text-ink-weak focus:outline-none focus:border-brand-500 transition-colors";
-
-const microLabelClass =
-  "block text-xs font-bold uppercase tracking-wide text-ink-weak";
-
-const pillClass =
-  "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold";
-
-function statusPillClass(status: string) {
-  if (status === "active") {
-    return cn(pillClass, "bg-accent-teal text-accent-teal-ink");
-  }
-  if (status === "pending") {
-    return cn(pillClass, "bg-[#fdeccc] text-[#8a5a06]");
-  }
-  if (status === "suspended") {
-    return cn(pillClass, "bg-[#fef3f2] text-[#b42318]");
-  }
-  return cn(pillClass, "bg-surface-tag text-ink");
-}
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type AuthMode = "login" | "register";
-type ConnectState = "idle" | "connecting" | "connected";
-type PanelMode = "view" | "create" | "edit";
-
-interface Session {
-  registryUrl: string;
-  token: string;
-  user: RegistryUser | null;
-}
-
-interface FormState {
-  agent_id: string;
-  display_name: string;
+type SeedAgent = {
+  id: string;
+  name: string;
+  type: "A2A" | "MCP" | "REST";
+  version: string;
+  date: string;
+  identifier: string;
   description: string;
-  url: string;
   tags: string[];
-  ttl_seconds: string;
-}
-
-const EMPTY_FORM: FormState = {
-  agent_id: "",
-  display_name: "",
-  description: "",
-  url: "",
-  tags: [],
-  ttl_seconds: "3600",
+  verified: boolean;
+  typeBadge: string;
+  status: "Active" | "Inactive";
 };
 
-function agentToForm(agent: RegistryAgentRecord): FormState {
-  return {
-    agent_id: agent.identifier,
-    display_name: agent.displayName,
-    description: agent.description ?? "",
-    url: agent.url,
-    tags: agent.tags ?? [],
-    ttl_seconds: String(agent.metadata?.ttl_seconds ?? 3600),
-  };
+const SEED_AGENTS: SeedAgent[] = [
+  {
+    id: "flights",
+    name: "Flight Booking",
+    type: "A2A",
+    version: "1.4.2",
+    date: "6/18/2026",
+    identifier: "agent:travel26/flights",
+    description:
+      "Search, compare and book commercial flights across major airlines with multi-city itinerary support.",
+    tags: ["travel", "booking", "flights"],
+    verified: true,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "hotels",
+    name: "Hotel Booking",
+    type: "A2A",
+    version: "1.2.0",
+    date: "6/15/2026",
+    identifier: "agent:travel26/hotels",
+    description:
+      "Find and reserve hotels worldwide with live availability, loyalty programs and room-type preferences.",
+    tags: ["travel", "booking", "hotels"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "car-rental",
+    name: "Car Rental",
+    type: "A2A",
+    version: "0.9.7",
+    date: "6/12/2026",
+    identifier: "agent:travel26/car-rental",
+    description:
+      "Reserve rental vehicles across global providers with insurance, driver options and pickup logistics.",
+    tags: ["travel", "booking", "cars"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "travel-insurance",
+    name: "Travel Insurance",
+    type: "A2A",
+    version: "1.1.0",
+    date: "6/10/2026",
+    identifier: "agent:travel26/travel-insurance",
+    description:
+      "Quote and purchase travel insurance policies that match your itinerary, coverage tier and medical needs.",
+    tags: ["travel", "finance", "insurance"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "visa",
+    name: "Visa Assistant",
+    type: "A2A",
+    version: "1.0.3",
+    date: "6/08/2026",
+    identifier: "agent:travel26/visa",
+    description:
+      "Check visa requirements, prefill applications and track issuance status across 190+ destinations.",
+    tags: ["travel", "legal", "visa"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "airport-transfer",
+    name: "Airport Transfers",
+    type: "A2A",
+    version: "0.8.4",
+    date: "6/05/2026",
+    identifier: "agent:travel26/airport-transfer",
+    description:
+      "Schedule ground transportation between airports and your accommodations with live ETA tracking.",
+    tags: ["travel", "transport"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "tours",
+    name: "Tour Packages",
+    type: "A2A",
+    version: "1.3.1",
+    date: "6/01/2026",
+    identifier: "agent:travel26/tours",
+    description:
+      "Browse and book curated tour packages including guides, activities and group experiences.",
+    tags: ["travel", "booking", "tours"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Active",
+  },
+  {
+    id: "cruises",
+    name: "Cruise Booking",
+    type: "A2A",
+    version: "1.0.0",
+    date: "5/28/2026",
+    identifier: "agent:travel26/cruises",
+    description:
+      "Compare and reserve cruise itineraries across major lines with cabin selection and excursions.",
+    tags: ["travel", "booking", "cruises"],
+    verified: false,
+    typeBadge: "A2A",
+    status: "Inactive",
+  },
+  {
+    id: "code-reviewer",
+    name: "Code Reviewer",
+    type: "MCP",
+    version: "2.1.0",
+    date: "6/20/2026",
+    identifier: "agent:dev/code-reviewer",
+    description:
+      "Automated code review across pull requests with style, security and test-coverage feedback.",
+    tags: ["dev", "code", "review"],
+    verified: true,
+    typeBadge: "MCP",
+    status: "Active",
+  },
+  {
+    id: "data-analyst",
+    name: "Data Analyst",
+    type: "MCP",
+    version: "1.5.2",
+    date: "6/17/2026",
+    identifier: "agent:data/data-analyst",
+    description:
+      "Run ad-hoc analyses across warehouse tables and produce summaries, charts and follow-up questions.",
+    tags: ["data", "analytics"],
+    verified: false,
+    typeBadge: "MCP",
+    status: "Active",
+  },
+  {
+    id: "sql-assistant",
+    name: "SQL Assistant",
+    type: "MCP",
+    version: "1.2.4",
+    date: "6/14/2026",
+    identifier: "agent:data/sql-assistant",
+    description:
+      "Compose, explain and optimize SQL across Postgres, Snowflake and BigQuery dialects.",
+    tags: ["data", "sql", "dev"],
+    verified: false,
+    typeBadge: "MCP",
+    status: "Active",
+  },
+  {
+    id: "document-summarizer",
+    name: "Document Summarizer",
+    type: "MCP",
+    version: "1.0.8",
+    date: "6/11/2026",
+    identifier: "agent:ai/document-summarizer",
+    description:
+      "Summarize long PDFs, web pages and meeting transcripts into structured briefs.",
+    tags: ["ai", "docs"],
+    verified: false,
+    typeBadge: "MCP",
+    status: "Active",
+  },
+  {
+    id: "api-tester",
+    name: "API Tester",
+    type: "REST",
+    version: "0.7.1",
+    date: "6/09/2026",
+    identifier: "agent:dev/api-tester",
+    description:
+      "Generate request fixtures, replay traffic and validate OpenAPI contracts against live services.",
+    tags: ["dev", "testing", "api"],
+    verified: false,
+    typeBadge: "REST",
+    status: "Active",
+  },
+  {
+    id: "security-scanner",
+    name: "Security Scanner",
+    type: "MCP",
+    version: "2.0.3",
+    date: "6/06/2026",
+    identifier: "agent:security/security-scanner",
+    description:
+      "Continuously scan repositories and runtime environments for vulnerabilities and policy drift.",
+    tags: ["security", "scanning"],
+    verified: true,
+    typeBadge: "MCP",
+    status: "Active",
+  },
+  {
+    id: "incident-responder",
+    name: "Incident Responder",
+    type: "MCP",
+    version: "1.4.0",
+    date: "6/03/2026",
+    identifier: "agent:ops/incident-responder",
+    description:
+      "Triage on-call alerts, correlate signals and draft postmortems with linked evidence.",
+    tags: ["ops", "incident"],
+    verified: false,
+    typeBadge: "MCP",
+    status: "Active",
+  },
+];
+
+const PROTOCOL_OPTIONS: Array<SeedAgent["type"]> = ["A2A", "MCP", "REST"];
+const STATUS_OPTIONS: Array<SeedAgent["status"]> = ["Active", "Inactive"];
+const TAG_OPTIONS = [
+  "travel",
+  "booking",
+  "support",
+  "data",
+  "observability",
+  "security",
+  "dev",
+  "ops",
+  "communication",
+];
+
+const PAGE_SIZE = 6;
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
+  const [search, setSearch] = useState("");
+  const [protocols, setProtocols] = useState<Set<string>>(new Set());
+  const [statuses, setStatuses] = useState<Set<string>>(new Set());
+  const [tags, setTags] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return SEED_AGENTS.filter((a) => {
+      if (q && !a.name.toLowerCase().includes(q) && !a.identifier.toLowerCase().includes(q)) {
+        return false;
+      }
+      if (protocols.size > 0 && !protocols.has(a.type)) return false;
+      if (statuses.size > 0 && !statuses.has(a.status)) return false;
+      if (tags.size > 0 && !a.tags.some((t) => tags.has(t))) return false;
+      return true;
+    });
+  }, [search, protocols, statuses, tags]);
+
+  const total = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, total);
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pages = buildPageList(currentPage, total);
+
+  function toggle(set: Set<string>, value: string, update: (next: Set<string>) => void) {
+    const next = new Set(set);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    update(next);
+    setPage(1);
+  }
+
+  return (
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-6">
+        <h2 className="font-display text-2xl font-bold text-ink-strong leading-tight">Explore</h2>
+        <p className="mt-1 text-sm text-ink-medium max-w-3xl">
+          Browse the secure directory of agents published to this registry.
+        </p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        <FilterSidebar
+          search={search}
+          onSearch={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          protocols={protocols}
+          onToggleProtocol={(v) => toggle(protocols, v, setProtocols)}
+          statuses={statuses}
+          onToggleStatus={(v) => toggle(statuses, v, setStatuses)}
+          tags={tags}
+          onToggleTag={(v) => toggle(tags, v, setTags)}
+        />
+
+        <div className="flex-1 min-w-0">
+          {pageItems.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              {pageItems.map((agent) => (
+                <AgentCard key={agent.id} agent={agent} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-surface-light rounded-card border border-line p-8 text-center">
+              <p className="text-sm font-semibold text-ink-strong">No agents match these filters</p>
+              <p className="mt-1 text-xs text-ink-weak">Adjust search, protocol, status or tags.</p>
+            </div>
+          )}
+
+          <Pagination
+            page={currentPage}
+            total={total}
+            pages={pages}
+            onChange={(p) => setPage(p)}
+          />
+        </div>
+      </div>
+    </main>
+  );
 }
 
-// ── Field ─────────────────────────────────────────────────────────────────────
+// ── FilterSidebar ─────────────────────────────────────────────────────────────
 
-function Field({
-  label, value, onChange, placeholder, type = "text", disabled = false, hint, error,
+function FilterSidebar({
+  search,
+  onSearch,
+  protocols,
+  onToggleProtocol,
+  statuses,
+  onToggleStatus,
+  tags,
+  onToggleTag,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string; disabled?: boolean; hint?: string; error?: string;
+  search: string;
+  onSearch: (v: string) => void;
+  protocols: Set<string>;
+  onToggleProtocol: (v: string) => void;
+  statuses: Set<string>;
+  onToggleStatus: (v: string) => void;
+  tags: Set<string>;
+  onToggleTag: (v: string) => void;
 }) {
   return (
-    <label className="block">
-      <span className={cn(microLabelClass, "mb-1")}>{label}</span>
-      <input
-        type={type} value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder} disabled={disabled}
-        className={cn(
-          inputClass,
-          error ? "border-[color:var(--color-danger)] bg-[#fef3f2] focus:border-[color:var(--color-danger)]" : "",
-        )}
-      />
-      {error ? <p className="mt-1 text-[11px] text-[color:var(--color-danger)]">{error}</p>
-        : hint ? <p className="mt-1 text-[11px] text-ink-weak">{hint}</p> : null}
-    </label>
-  );
-}
+    <aside className="lg:w-64 flex-shrink-0">
+      <div className="bg-surface-strong rounded-card border border-line p-4 space-y-5 sticky top-24 max-h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+        {/* SEARCH */}
+        <div className="flex-shrink-0">
+          <label
+            htmlFor="search"
+            className="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-1.5"
+          >
+            Search
+          </label>
+          <input
+            type="text"
+            id="search"
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Filter by agent name..."
+            className="w-full rounded-control border-2 border-line bg-surface-light px-3 py-2 text-sm text-ink placeholder:text-ink-weak focus:outline-none focus:border-brand-500"
+          />
+        </div>
 
-// ── Tags chip input ────────────────────────────────────────────────────────────
-
-function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
-  const [input, setInput] = useState("");
-
-  function commit(raw: string) {
-    const tag = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
-    if (tag && !tags.includes(tag)) onChange([...tags, tag]);
-    setInput("");
-  }
-
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commit(input); }
-    else if (e.key === "Backspace" && !input && tags.length > 0) onChange(tags.slice(0, -1));
-  }
-
-  return (
-    <div>
-      <span className={cn(microLabelClass, "mb-1")}>Tags</span>
-      <div className="flex min-h-[42px] flex-wrap gap-1.5 rounded-control border-2 border-line bg-surface-light px-3 py-2 focus-within:border-brand-500 transition-colors">
-        {tags.map((tag) => (
-          <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink">
-            {tag}
-            <button type="button" onClick={() => onChange(tags.filter((t) => t !== tag))} className="ml-0.5 leading-none text-ink-weak hover:text-ink-strong">×</button>
+        {/* PROTOCOL */}
+        <div className="flex-shrink-0">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">
+            Protocol
           </span>
-        ))}
-        <input
-          value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyDown} onBlur={() => { if (input) commit(input); }}
-          placeholder={tags.length === 0 ? "e.g. customer-service, billing" : ""}
-          className="min-w-[160px] flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-weak"
-        />
+          <div className="space-y-1.5">
+            {PROTOCOL_OPTIONS.map((opt) => (
+              <label
+                key={opt}
+                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={protocols.has(opt)}
+                  onChange={() => onToggleProtocol(opt)}
+                  className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* STATUS */}
+        <div className="flex-shrink-0">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">
+            Status
+          </span>
+          <div className="space-y-1.5">
+            {STATUS_OPTIONS.map((opt) => (
+              <label
+                key={opt}
+                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={statuses.has(opt)}
+                  onChange={() => onToggleStatus(opt)}
+                  className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* TAGS */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">
+            Tags
+          </span>
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+            {TAG_OPTIONS.map((t) => (
+              <label
+                key={t}
+                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={tags.has(t)}
+                  onChange={() => onToggleTag(t)}
+                  className="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+                />
+                <span className="truncate">{t}</span>
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
-      <p className="mt-1 text-[11px] text-ink-weak">Press Enter or comma to add.</p>
-    </div>
+    </aside>
   );
 }
 
-// ── Agent card ─────────────────────────────────────────────────────────────────
+// ── AgentCard ─────────────────────────────────────────────────────────────────
 
-function AgentCard({ agent, selected, onClick }: { agent: RegistryAgentRecord; selected: boolean; onClick: () => void }) {
-  const status = (agent.metadata?.status as string) ?? "active";
+function AgentCard({ agent }: { agent: SeedAgent }) {
   return (
     <article
-      onClick={onClick}
-      className={cn(
-        "bg-surface-light rounded-card border shadow-card p-4 hover:shadow-card-hover transition cursor-pointer flex flex-col h-full gap-3 text-left",
-        selected
-          ? "border-brand-500 bg-brand-200/60"
-          : "border-line/70 hover:border-line-strong",
-      )}
+      role="button"
+      tabIndex={0}
+      className="bg-surface-light rounded-card border border-line/70 shadow-card p-4 hover:shadow-card-hover hover:border-line-strong transition cursor-pointer flex flex-col h-full gap-3"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-ink-strong truncate">{agent.displayName}</h3>
-        <span className={statusPillClass(status)}>{status}</span>
-      </div>
-      <p className="font-mono text-xs text-ink-medium truncate">{agent.identifier}</p>
-      {(agent.tags ?? []).length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-auto">
-          {(agent.tags ?? []).slice(0, 3).map((tag) => (
-            <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink">{tag}</span>
-          ))}
-          {(agent.tags ?? []).length > 3 && <span className="text-xs text-ink-weak self-center">+{(agent.tags ?? []).length - 3}</span>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="font-semibold text-ink-strong truncate">{agent.name}</h3>
+            {agent.verified && (
+              <span className="inline-flex flex-shrink-0" title="Verified">
+                <svg
+                  className="w-4 h-4 text-brand-500"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 text-xs text-ink-weak">
+            Version {agent.version} • {agent.date}
+          </div>
         </div>
-      )}
+        {agent.typeBadge && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#fdeccc] text-[#8a5a06] flex-shrink-0">
+            {agent.typeBadge}
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-ink line-clamp-2 leading-relaxed">{agent.description}</p>
+      <div className="flex flex-wrap gap-1.5 mt-auto">
+        {agent.tags.slice(0, 4).map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink"
+          >
+            {t}
+          </span>
+        ))}
+      </div>
     </article>
   );
 }
 
-// ── Connect / Auth screen ──────────────────────────────────────────────────────
+// ── Pagination ────────────────────────────────────────────────────────────────
 
-function ConnectScreen({
-  onConnected,
-  connectState,
+function Pagination({
+  page,
+  total,
+  pages,
+  onChange,
 }: {
-  onConnected: (session: Session) => void;
-  connectState: ConnectState;
-}) {
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function connect() {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = authMode === "register"
-        ? await registerOnRegistry(REGISTRY_API_URL, email, password, displayName || undefined)
-        : await loginToRegistry(REGISTRY_API_URL, email, password);
-      const user = await getRegistryMe(REGISTRY_API_URL, token);
-      onConnected({ registryUrl: REGISTRY_API_URL, token, user });
-    } catch (err) {
-      setError(err instanceof RegistryApiError ? err.message : "Could not sign in — check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const isReady = email.trim() && password.trim();
-
-  return (
-    <div className="mx-auto max-w-lg space-y-5">
-      <div className={cn(infoCardClass, "space-y-5")}>
-        <div>
-          <h2 className="font-semibold text-ink-strong text-lg">Registry Manager</h2>
-          <p className="mt-1 text-xs text-ink-medium">
-            Sign in to manage your agents on the NANDA Registry.
-          </p>
-        </div>
-
-        {/* Auth mode tabs */}
-        <div>
-          <div className="mb-4 flex rounded-control border-2 border-line p-1 text-sm">
-            {([["login", "Sign in"], ["register", "Create account"]] as [AuthMode, string][]).map(([key, label]) => (
-              <button
-                key={key} type="button"
-                onClick={() => { setAuthMode(key); setError(null); }}
-                className={cn("flex-1 rounded-control py-1.5 text-xs font-medium transition",
-                  authMode === key
-                    ? "bg-brand-500 text-white"
-                    : "text-ink-medium hover:text-ink-strong")}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            {authMode === "register" && (
-              <Field label="Display name (optional)" value={displayName} onChange={setDisplayName} placeholder="Your name" />
-            )}
-            <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
-            <Field label="Password" value={password} onChange={setPassword} placeholder="••••••••" type="password"
-              hint={authMode === "register" ? "At least 8 characters." : undefined} />
-          </div>
-        </div>
-
-        {error && (
-          <div className="rounded-control border border-[color:var(--color-danger)]/30 bg-[#fef3f2] px-4 py-3 text-sm text-[color:var(--color-danger)]">{error}</div>
-        )}
-
-        <button
-          onClick={connect}
-          disabled={loading || !isReady || connectState === "connecting"}
-          className={cn(primaryBtnClass, "w-full h-11")}
-        >
-          {loading ? "Connecting…" : authMode === "register" ? "Create account & connect" : "Sign in & connect"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Agent form ─────────────────────────────────────────────────────────────────
-
-function AgentForm({ mode, form, patchForm, onSave, onCancel, saving, saveError }: {
-  mode: "create" | "edit"; form: FormState;
-  patchForm: (key: keyof FormState, val: string | string[]) => void;
-  onSave: () => void; onCancel: () => void; saving: boolean; saveError: string | null;
+  page: number;
+  total: number;
+  pages: Array<number | "...">;
+  onChange: (p: number) => void;
 }) {
   return (
-    <div className={cn(infoCardClass, "space-y-4")}>
-      <h2 className="font-semibold text-ink-strong text-lg">
-        {mode === "create" ? "New agent" : `Edit ${form.agent_id}`}
-      </h2>
-
-      <Field label="Agent ID" value={form.agent_id} onChange={(v) => patchForm("agent_id", v)}
-        placeholder="my-agent" disabled={mode === "edit"}
-        hint={mode === "edit" ? "Agent ID cannot be changed." : "Lowercase letters, numbers, hyphens. Permanent."} />
-
-      <Field label="Display Name" value={form.display_name} onChange={(v) => patchForm("display_name", v)} placeholder="My Agent" />
-      <Field label="Description (optional)" value={form.description} onChange={(v) => patchForm("description", v)} placeholder="What this agent does" />
-      <Field label="Card URL" value={form.url} onChange={(v) => patchForm("url", v)}
-        placeholder="https://agents.example.com/my-agent/a2a.json"
-        hint="URL to the A2A card JSON describing this agent's capabilities." />
-      <TagsInput tags={form.tags} onChange={(tags) => patchForm("tags", tags)} />
-      <Field label="TTL Seconds" value={form.ttl_seconds} onChange={(v) => patchForm("ttl_seconds", v)} placeholder="3600"
-        hint="How long resolvers should cache this agent record." />
-
-      {saveError && (
-        <div className="rounded-control border border-[color:var(--color-danger)]/30 bg-[#fef3f2] px-4 py-3 text-sm text-[color:var(--color-danger)]">{saveError}</div>
-      )}
-
-      <div className="flex gap-3">
-        <button onClick={onSave} disabled={saving} className={primaryBtnClass}>
-          {saving ? "Saving…" : mode === "create" ? "Create agent" : "Save changes"}
-        </button>
-        <button onClick={onCancel} className={secondaryBtnClass}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Main page ──────────────────────────────────────────────────────────────────
-
-export default function RegistryManagerPage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [connectState, setConnectState] = useState<ConnectState>("idle");
-
-  const [agents, setAgents] = useState<RegistryAgentRecord[]>([]);
-  const [selected, setSelected] = useState<RegistryAgentRecord | null>(null);
-  const [panelMode, setPanelMode] = useState<PanelMode>("view");
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<RegistryAgentRecord[] | null>(null);
-  const [searching, setSearching] = useState(false);
-
-  const visibleAgents = searchResults ?? agents;
-
-  const patchForm = (key: keyof FormState, val: string | string[]) =>
-    setForm((f) => ({ ...f, [key]: val }));
-
-  async function onConnected(s: Session) {
-    setConnectState("connecting");
-    try {
-      const data = await fetchRegistryAgents(s.registryUrl, s.token);
-      setAgents(data);
-      setSelected(data[0] ?? null);
-      setSession(s);
-      setConnectState("connected");
-    } catch (err) {
-      setConnectState("idle");
-      throw err;
-    }
-  }
-
-  const refresh = useCallback(async () => {
-    if (!session) return;
-    try {
-      const data = await fetchRegistryAgents(session.registryUrl, session.token);
-      setAgents(data);
-    } catch { /* silent */ }
-  }, [session]);
-
-  function signOut() {
-    setSession(null);
-    setAgents([]);
-    setSelected(null);
-    setPanelMode("view");
-    setConnectState("idle");
-  }
-
-  async function runSearch(q: string) {
-    if (!session) return;
-    if (!q.trim()) { setSearchResults(null); return; }
-    setSearching(true);
-    try {
-      const results = await searchRegistryAgents(session.registryUrl, q.trim(), session.token);
-      setSearchResults(results);
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  function clearSearch() { setSearchQuery(""); setSearchResults(null); }
-
-  function startCreate() { setForm(EMPTY_FORM); setSelected(null); setSaveError(null); setPanelMode("create"); }
-  function startEdit() { if (!selected) return; setForm(agentToForm(selected)); setSaveError(null); setPanelMode("edit"); }
-
-  function formToCreatePayload(): RegistryAgentCreatePayload {
-    return {
-      agent_id: form.agent_id,
-      display_name: form.display_name,
-      description: form.description || undefined,
-      url: form.url,
-      tags: form.tags,
-      ttl_seconds: parseInt(form.ttl_seconds, 10) || 3600,
-    };
-  }
-
-  function formToUpdatePayload(): RegistryAgentUpdatePayload {
-    return {
-      display_name: form.display_name,
-      description: form.description || undefined,
-      url: form.url,
-      tags: form.tags,
-      ttl_seconds: parseInt(form.ttl_seconds, 10) || 3600,
-    };
-  }
-
-  async function save() {
-    if (!session) return;
-    setSaving(true); setSaveError(null);
-    try {
-      if (panelMode === "create") {
-        const created = await createRegistryAgent(session.registryUrl, session.token, formToCreatePayload());
-        await refresh();
-        setSelected(created);
-        setPanelMode("view");
-      } else if (panelMode === "edit" && selected) {
-        const updated = await updateRegistryAgent(session.registryUrl, session.token, selected.identifier, formToUpdatePayload());
-        await refresh();
-        setSelected(updated);
-        setPanelMode("view");
-      }
-    } catch (err) {
-      setSaveError(err instanceof RegistryApiError ? err.message : "Save failed.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteAgent() {
-    if (!selected || !session) return;
-    const deletedId = selected.identifier;
-    setDeleting(true);
-    try {
-      await deleteRegistryAgent(session.registryUrl, session.token, deletedId);
-      // Fetch fresh list so selection uses post-delete state, not stale closure
-      const data = await fetchRegistryAgents(session.registryUrl, session.token);
-      setAgents(data);
-      setSelected(data.find((a) => a.identifier !== deletedId) ?? null);
-      setPanelMode("view");
-    } catch { /* state reflects actual server state via next refresh */ }
-    finally { setDeleting(false); }
-  }
-
-  // ── Connect gate ─────────────────────────────────────────────────────────────
-
-  if (!session) {
-    return (
-      <PageShell title="Registry Manager" description="Manage agents on your Registry Server.">
-        <ConnectScreen onConnected={onConnected} connectState={connectState} />
-      </PageShell>
-    );
-  }
-
-  // ── Main layout ───────────────────────────────────────────────────────────────
-
-  return (
-    <PageShell title="Registry Manager" description={session.registryUrl}>
-      {/* Top bar */}
-      <div className={cn(infoCardClass, "mb-4 flex items-center justify-between px-4 py-2.5")}>
-        <div className="text-sm text-ink-medium">
-          {session.user
-            ? <><span className="font-medium text-ink-strong">{session.user.display_name ?? session.user.email}</span><span className="ml-2 text-xs text-ink-weak">{session.user.email}</span></>
-            : <span className="font-mono text-xs text-ink-medium">admin token</span>
-          }
-        </div>
-        <button
-          onClick={signOut}
-          className="text-xs font-medium text-ink-weak hover:text-ink transition"
-        >
-          Disconnect
-        </button>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-        {/* Sidebar */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className={microLabelClass}>
-              Agents ({searchResults ? `${visibleAgents.length} of ${agents.length}` : agents.length})
+    <nav className="flex items-center justify-center gap-2 mt-6 pb-4">
+      <button
+        onClick={() => onChange(Math.max(1, page - 1))}
+        disabled={page === 1}
+        className="px-3 py-1.5 text-sm font-medium rounded text-ink border-2 border-line bg-surface-light hover:border-line-strong disabled:opacity-40 disabled:cursor-not-allowed transition"
+      >
+        Previous
+      </button>
+      <div className="flex items-center gap-1">
+        {pages.map((p, i) =>
+          p === "..." ? (
+            <span key={`gap-${i}`} className="px-2 py-1 text-sm text-ink-weak">
+              ...
             </span>
-            <button
-              onClick={startCreate}
-              className={cn(primaryBtnClass, "h-8 px-3 text-xs")}
-            >
-              + New
-            </button>
-          </div>
-
-          {/* Search bar */}
-          <div className="flex items-center gap-1.5">
-            <input
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (!e.target.value.trim()) clearSearch();
-              }}
-              onKeyDown={(e) => { if (e.key === "Enter") runSearch(searchQuery); }}
-              placeholder="Search or paste URN…"
-              className={cn(inputClass, "flex-1 text-xs h-9")}
-            />
-            {searchQuery ? (
-              <button
-                onClick={clearSearch}
-                className={cn(secondaryBtnClass, "h-9 px-2.5 text-xs")}
-              >
-                ✕
-              </button>
-            ) : (
-              <button
-                onClick={() => runSearch(searchQuery)}
-                disabled={!searchQuery.trim() || searching}
-                className={cn(secondaryBtnClass, "h-9 px-3 text-xs disabled:opacity-40")}
-              >
-                {searching ? "…" : "Go"}
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
-            {visibleAgents.length === 0 ? (
-              <div className={cn(infoCardClass, "text-center")}>
-                {searchResults !== null ? (
-                  <p className="text-sm text-ink-medium">No agents match &ldquo;{searchQuery}&rdquo;</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-semibold text-ink-strong">No agents yet</p>
-                    <button onClick={startCreate} className={cn(primaryBtnClass, "mt-3")}>
-                      + New agent
-                    </button>
-                  </>
-                )}
-              </div>
-            ) : visibleAgents.map((agent) => (
-              <AgentCard key={agent.identifier} agent={agent}
-                selected={selected?.identifier === agent.identifier}
-                onClick={() => { setSelected(agent); setPanelMode("view"); setSaveError(null); }} />
-            ))}
-          </div>
-        </div>
-
-        {/* Main panel */}
-        <div>
-          {panelMode === "create" || panelMode === "edit" ? (
-            <AgentForm mode={panelMode} form={form} patchForm={patchForm}
-              onSave={save} onCancel={() => { setPanelMode("view"); setSaveError(null); }}
-              saving={saving} saveError={saveError} />
-          ) : selected ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <button onClick={startEdit} className={primaryBtnClass}>Edit</button>
-                <button onClick={deleteAgent} disabled={deleting} className={dangerBtnClass}>
-                  {deleting ? "Deleting…" : "Delete"}
-                </button>
-              </div>
-
-              <div className={cn(infoCardClass, "space-y-3")}>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-semibold text-ink-strong text-lg">{selected.displayName}</h2>
-                    <span className={statusPillClass(String(selected.metadata?.status ?? "active"))}>
-                      {String(selected.metadata?.status ?? "active")}
-                    </span>
-                  </div>
-                  <p className="font-mono text-xs text-ink-medium">{selected.identifier}</p>
-                </div>
-
-                {selected.description && <p className="text-sm text-ink leading-relaxed">{selected.description}</p>}
-
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className={microLabelClass}>Card URL</span>
-                    <a href={selected.url} target="_blank" rel="noopener noreferrer"
-                      className="mt-0.5 block break-all font-mono text-xs text-brand-500 hover:text-brand-600 hover:underline">
-                      {selected.url}
-                    </a>
-                  </div>
-                  <div>
-                    <span className={microLabelClass}>TTL</span>
-                    <p className="mt-0.5 font-mono text-xs text-ink">{selected.metadata?.ttl_seconds ?? "—"}s</p>
-                  </div>
-                  {(selected.tags ?? []).length > 0 && (
-                    <div>
-                      <span className={microLabelClass}>Tags</span>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {(selected.tags ?? []).map((tag) => (
-                          <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink">{tag}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <JsonPanel data={selected} />
-            </div>
           ) : (
-            <div className={cn(infoCardClass, "text-center")}>
-              <p className="text-sm font-semibold text-ink-strong">Select an agent</p>
-              <p className="mt-1 text-xs text-ink-weak">Choose from the list, or create a new one.</p>
-            </div>
-          )}
-        </div>
+            <button
+              key={p}
+              onClick={() => onChange(p)}
+              className={
+                "min-w-9 h-9 px-2 text-sm font-medium rounded-full transition " +
+                (p === page ? "bg-brand-500 text-white" : "text-ink hover:bg-surface-strong")
+              }
+            >
+              {p}
+            </button>
+          ),
+        )}
       </div>
-    </PageShell>
+      <button
+        onClick={() => onChange(Math.min(total, page + 1))}
+        disabled={page === total}
+        className="px-3 py-1.5 text-sm font-medium rounded text-ink border-2 border-line bg-surface-light hover:border-line-strong disabled:opacity-40 disabled:cursor-not-allowed transition"
+      >
+        Next
+      </button>
+    </nav>
   );
+}
+
+function buildPageList(current: number, total: number): Array<number | "..."> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: Array<number | "..."> = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push("...");
+  for (let i = start; i <= end; i++) out.push(i);
+  if (end < total - 1) out.push("...");
+  out.push(total);
+  return out;
 }
